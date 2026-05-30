@@ -173,11 +173,11 @@ interface WorkspaceStore {
   logs: AutomationLog[];
   tags: Tag[];
   indexingStatus: IndexingStatus;
-  activeView: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics';
+  activeView: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics' | 'pdf-tools' | 'office-workspace' | 'settings';
   searchQuery: string; // Tracks last search query for command palette
 
   // Navigation & Base Actions
-  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics') => void;
+  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics' | 'pdf-tools' | 'office-workspace' | 'settings') => void;
   setActiveWorkspace: (id: string | null) => void;
   init: () => Promise<void>;
   

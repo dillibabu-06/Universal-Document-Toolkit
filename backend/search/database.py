@@ -1,3 +1,4 @@
+import os
 import aiosqlite
 from loguru import logger
 from backend.config.settings import settings
@@ -9,7 +10,8 @@ class DatabaseManager:
     @staticmethod
     async def get_connection() -> aiosqlite.Connection:
         """Returns an async connection to the SQLite database."""
-        conn = await aiosqlite.connect(settings.DATABASE_URL)
+        db_path = os.getenv("SHARED_DATABASE_PATH") or str(settings.DATABASE_URL)
+        conn = await aiosqlite.connect(db_path)
         conn.row_factory = aiosqlite.Row
         await conn.execute("PRAGMA journal_mode=WAL")
         await conn.execute("PRAGMA synchronous=NORMAL")

@@ -29,7 +29,8 @@ dependencies = [
     "sqlalchemy>=2.0.28",
     "aiosqlite>=0.20.0",
     "platformdirs>=4.2.0",
-    "pyinstaller>=6.5.0"
+    "pyinstaller>=6.5.0",
+    "spacy>=3.7.0"
 ]
 
 [project.optional-dependencies]

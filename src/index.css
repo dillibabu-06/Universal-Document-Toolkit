@@ -8,59 +8,59 @@
   }
 }
 
-/* 1. Flat, Layered Surfaces Design System (Linear style) */
+/* 1. Premium Glassmorphism & Layered Surfaces */
 .matte-bg {
-  @apply bg-background-dark;
+  @apply bg-background-dark/95 backdrop-blur-md;
 }
 
 .matte-sidebar {
-  @apply bg-sidebar;
+  @apply bg-sidebar/95 backdrop-blur-md border-r border-border-dark/50;
 }
 
 .matte-panel {
-  @apply bg-panel-dark border border-border-dark rounded-md;
+  @apply bg-panel-dark/90 backdrop-blur-sm border border-border-dark/60 rounded-xl shadow-lg transition-all duration-200;
 }
 
 .matte-panel-elevated {
-  @apply bg-elevated border border-border-dark rounded-lg shadow-md;
+  @apply bg-elevated/95 backdrop-blur-md border border-white/5 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300;
 }
 
 .hover-row {
-  @apply hover:bg-hover/30 transition-colors duration-100;
+  @apply hover:bg-white/[0.03] hover:shadow-sm transition-all duration-200 cursor-pointer;
 }
 
 /* Selected row premium indicator */
 .selected-row {
-  @apply bg-indigo-500/5 border-l-2 border-indigo-500/80;
+  @apply bg-accent/10 border-l-[3px] border-accent shadow-inner transition-all duration-200;
 }
 
 /* Alternating table rows visually distinct */
 .table-dense tr:nth-child(odd) {
-  @apply bg-panel-dark;
+  @apply bg-transparent;
 }
 .table-dense tr:nth-child(even) {
-  @apply bg-[#14161c]/40;
+  @apply bg-white/[0.01];
 }
 
-/* 2. Premium, Highly-Dense Desktop Typography scale */
+/* 2. Premium Desktop Typography Scale */
 .text-explorer-row {
-  @apply text-[13px] font-medium text-zinc-200 tracking-wide;
+  @apply text-[13px] font-normal text-slate-200 tracking-[0.01em] leading-relaxed;
 }
 
 .text-explorer-header {
-  @apply text-[10px] font-semibold text-zinc-500 uppercase tracking-wider select-none border-b border-border-dark/80 bg-zinc-900/40;
+  @apply text-[11px] font-semibold text-slate-400 uppercase tracking-widest select-none border-b border-border-dark/50 bg-transparent pb-2 font-display;
 }
 
 .text-sidebar-label {
-  @apply text-[11px] font-bold text-zinc-500 tracking-wider uppercase select-none;
+  @apply text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase select-none font-display mb-1;
 }
 
 .text-sidebar-item {
-  @apply text-[12px] font-medium text-zinc-400 transition-colors duration-100;
+  @apply text-[13px] font-medium text-slate-300 transition-colors duration-200 hover:text-white;
 }
 
 .text-metadata-mono {
-  @apply text-[10px] font-mono text-zinc-400 tracking-tight leading-normal;
+  @apply text-[11px] font-mono text-slate-400 tracking-tight leading-relaxed;
 }
 
 /* 3. Keyboard Shortcut Badges */

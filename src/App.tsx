@@ -18,6 +18,9 @@ import DuplicatesView from './features/duplicates/DuplicatesView';
 import AutomationView from './features/automation/AutomationView';
 import LogsView from './features/automation/LogsView';
 import DiagnosticsView from './features/diagnostics/DiagnosticsView';
+import SettingsView from './features/settings/SettingsView';
+import OfficeStudioView from './features/office-studio/OfficeStudioView';
+import PdfStudioView from './features/pdf-studio/PdfStudioView';
 
 export default function App() {
   const {
@@ -84,6 +87,12 @@ export default function App() {
   const [selectedFileMetadata, setSelectedFileMetadata] = useState<any>(null);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [metadataForm, setMetadataForm] = useState<any>({});
+
+  // Universal Document Toolkit Ported Integration States
+  
+  // PDF tool handler moved.
+
+  // Office tool handler moved.
 
   useEffect(() => {
     if (selectedFile) {
@@ -433,6 +442,15 @@ export default function App() {
               formatBytes={formatBytes}
             />
           )}
+
+          {/* ==================== VIEW: PDF TOOLS ==================== */}
+          {activeView === 'pdf-tools' && <PdfStudioView />}
+
+          {/* ==================== VIEW: OFFICE WORKSPACE ==================== */}
+          {activeView === 'office-workspace' && <OfficeStudioView />}
+
+          {/* ==================== VIEW: SETTINGS CENTER ==================== */}
+          {activeView === 'settings' && <SettingsView />}
 
         </div>
       </main>

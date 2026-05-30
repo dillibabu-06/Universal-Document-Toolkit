@@ -25,6 +25,7 @@ export interface FileRecord {
   indexed_at: number;
   category: string;
   snippet?: string;
+  extracted_metadata?: string;
 }
 
 export interface DuplicateCluster {

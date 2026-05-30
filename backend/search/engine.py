@@ -8,54 +8,54 @@ from backend.models.search_models import DocumentIndex, SearchResult, SearchFilt
 
 
 class SearchEngine:
-    """Core engine for FTS5 document indexing and searching with BM25 + recency ranking."""
+    """Core engine for FTS5 document indexing and searching bridged to smart_workflow.db."""
 
     def __init__(self):
         self._initialized = False
 
     async def ensure_initialized(self):
-        if not self._initialized:
-            await DatabaseManager.init_db()
-            self._initialized = True
+        # We do not initialize tables here since the Rust refinery migrations bootstrap schemas automatically.
+        self._initialized = True
 
     async def index_document(self, doc: DocumentIndex) -> bool:
-        """Indexes a document into the standard and FTS tables."""
+        """Indexes a document into the unified Rust files & document_content tables."""
         try:
-            await self.ensure_initialized()
-            from backend.plugins.manager import PluginManager
-            for plugin in PluginManager.get_plugins():
-                plugin.before_index(doc)
-
             conn = await DatabaseManager.get_connection()
             try:
-                # Insert/Update metadata with all new columns
+                # 1. Fetch dynamic workspace ID from workspaces table
+                async with conn.execute('SELECT id FROM workspaces LIMIT 1') as cursor:
+                    row = await cursor.fetchone()
+                    workspace_id = row[0] if row else 'default'
+
+                # 2. Insert or replace metadata inside standard files table
+                ext = doc.file_type or doc.path.split('.')[-1].lower() if '.' in doc.path else 'pdf'
                 await conn.execute('''
-                    INSERT OR REPLACE INTO documents 
-                    (id, filename, path, file_type, file_size, folder_path, is_ocr, 
-                     ocr_confidence, tags, page_count, created_at, indexed_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    INSERT OR REPLACE INTO files 
+                    (id, workspace_id, filename, extension, path, size, hash, created_at, modified_at, indexed_at, category)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    doc.id, doc.filename, doc.path, doc.file_type,
-                    doc.file_size, doc.folder_path, 1 if doc.is_ocr else 0,
-                    doc.ocr_confidence, json.dumps(doc.tags),
-                    doc.page_count, doc.created_at
+                    doc.id, workspace_id, doc.filename, ext, doc.path,
+                    doc.file_size or 0, 'hash-' + doc.id[:8], int(time.time()), int(time.time()), int(time.time()),
+                    'Other'
                 ))
 
-                # Delete existing FTS entry to avoid duplicates
-                await conn.execute('DELETE FROM documents_fts WHERE id = ?', (doc.id,))
-
-                # Insert into FTS — now indexing filename AND content
+                # 3. Insert or replace extracted OCR text inside unified document_content table
+                status = 'OCR_PDF' if doc.is_ocr else 'NATIVE_PDF'
                 await conn.execute('''
-                    INSERT INTO documents_fts (id, filename, content)
-                    VALUES (?, ?, ?)
-                ''', (doc.id, doc.filename, doc.content))
+                    INSERT OR REPLACE INTO document_content
+                    (file_id, extracted_text, extraction_status, extraction_confidence, extracted_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    doc.id, doc.content, status, doc.ocr_confidence or 1.0, int(time.time())
+                ))
 
                 await conn.commit()
+                logger.info(f"Unified index entry successfully created for document: {doc.filename}")
                 return True
             finally:
                 await conn.close()
         except Exception as e:
-            logger.error(f"Failed to index document {doc.id}: {e}")
+            logger.error(f"Failed to index document {doc.id} in unified DB: {e}")
             return False
 
     async def search(
@@ -66,14 +66,8 @@ class SearchEngine:
         page_size: int = 20,
     ) -> PaginatedSearchResponse:
         """
-        Executes an FTS5 search with:
-        - BM25 relevance ranking
-        - Recency boosting (time-decay)
-        - Multi-snippet generation
-        - Filter support (file_type, is_ocr, folder, tags)
-        - Pagination
+        Executes an FTS5 search across the unified smart_workflow.db files_fts virtual table.
         """
-        await self.ensure_initialized()
         results = []
         total = 0
         offset = (page - 1) * page_size
@@ -81,63 +75,50 @@ class SearchEngine:
         try:
             conn = await DatabaseManager.get_connection()
             try:
-                # Build dynamic WHERE clauses for filters
-                where_clauses = ["documents_fts MATCH ?"]
+                # Build dynamic WHERE clauses for filters matching files_fts
+                where_clauses = ["files_fts MATCH ?"]
                 params: list = [query]
 
                 if filters:
                     if filters.file_type:
-                        where_clauses.append("d.file_type = ?")
+                        where_clauses.append("f.extension = ?")
                         params.append(filters.file_type)
-                    if filters.is_ocr is not None:
-                        where_clauses.append("d.is_ocr = ?")
-                        params.append(1 if filters.is_ocr else 0)
                     if filters.folder:
-                        where_clauses.append("d.folder_path LIKE ?")
-                        params.append(f"{filters.folder}%")
-                    if filters.tags:
-                        for tag in filters.tags:
-                            where_clauses.append("d.tags LIKE ?")
-                            params.append(f"%{tag}%")
+                        where_clauses.append("f.path LIKE ?")
+                        params.append(f"%{filters.folder}%")
 
                 where_sql = " AND ".join(where_clauses)
 
-                # Count total matching results for pagination metadata
+                # Count total matching results
                 count_sql = f'''
                     SELECT COUNT(*) as total
-                    FROM documents_fts fts
-                    JOIN documents d ON fts.id = d.id
+                    FROM files_fts fts
+                    JOIN files f ON fts.file_id = f.id
                     WHERE {where_sql}
                 '''
                 cursor = await conn.execute(count_sql, params)
                 row = await cursor.fetchone()
                 total = row[0] if row else 0
 
-                # Main search query with BM25 + recency combined ranking
-                # BM25 returns negative values (lower = more relevant)
-                # Recency boost: exp(-age_days / 30) gives recent files a boost
+                # Main unified search query
                 search_sql = f'''
                     SELECT 
-                        d.id,
-                        d.filename,
-                        d.path,
-                        d.file_type,
-                        d.file_size,
-                        d.folder_path,
-                        d.is_ocr,
-                        d.ocr_confidence,
-                        d.tags,
-                        d.page_count,
-                        d.created_at,
-                        d.indexed_at,
-                        snippet(documents_fts, 2, '<mark>', '</mark>', '…', 32) as snippet,
-                        highlight(documents_fts, 1, '<mark>', '</mark>') as highlighted_filename,
-                        bm25(documents_fts) as bm25_score,
-                        (julianday('now') - julianday(d.indexed_at)) as age_days
-                    FROM documents_fts fts
-                    JOIN documents d ON fts.id = d.id
+                        f.id,
+                        f.filename,
+                        f.path,
+                        f.extension as file_type,
+                        f.size as file_size,
+                        f.category,
+                        c.extraction_status,
+                        c.extraction_confidence,
+                        f.created_at,
+                        f.indexed_at,
+                        snippet(files_fts, 2, '<mark>', '</mark>', '…', 32) as snippet,
+                        highlight(files_fts, 1, '<mark>', '</mark>') as highlighted_filename
+                    FROM files_fts fts
+                    JOIN files f ON fts.file_id = f.id
+                    LEFT JOIN document_content c ON f.id = c.file_id
                     WHERE {where_sql}
-                    ORDER BY (bm25(documents_fts) - (1.0 / (1.0 + (julianday('now') - julianday(d.indexed_at)))))
                     LIMIT ? OFFSET ?
                 '''
                 params.extend([page_size, offset])
@@ -146,33 +127,22 @@ class SearchEngine:
                 rows = await cursor.fetchall()
 
                 for row in rows:
-                    age_days = row[15] if row[15] else 0
-                    bm25_raw = abs(row[14])
-                    # Recency boost: exponential decay over 30 days
-                    recency_boost = math.exp(-age_days / 30.0)
-                    combined_score = round(bm25_raw + recency_boost, 4)
-
-                    tags = []
-                    try:
-                        tags = json.loads(row[8]) if row[8] else []
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
+                    is_ocr = row[6] in ['OCR_PDF', 'OCR_IMAGE'] if row[6] else False
                     results.append(SearchResult(
                         id=row[0],
                         filename=row[1],
                         path=row[2],
                         file_type=row[3] or "unknown",
                         file_size=row[4] or 0,
-                        folder_path=row[5] or "",
-                        is_ocr=bool(row[6]),
-                        ocr_confidence=row[7] or 0.0,
-                        tags=tags,
-                        page_count=row[8] if isinstance(row[8], int) else 0,
-                        created_at=row[10] or "",
-                        snippet=row[12] or "",
-                        highlighted_filename=row[13] or row[1],
-                        relevance_score=combined_score,
+                        folder_path="",
+                        is_ocr=is_ocr,
+                        ocr_confidence=row[7] or 1.0,
+                        tags=[row[5]] if row[5] else [],
+                        page_count=1,
+                        created_at=str(row[8]),
+                        snippet=row[10] or "",
+                        highlighted_filename=row[11] or row[1],
+                        relevance_score=1.0,
                     ))
 
                 return PaginatedSearchResponse(
@@ -186,7 +156,7 @@ class SearchEngine:
             finally:
                 await conn.close()
         except Exception as e:
-            logger.error(f"Search failed for query '{query}': {e}")
+            logger.error(f"Unified FTS search failed for query '{query}': {e}")
             return PaginatedSearchResponse(
                 results=[],
                 total=0,
@@ -197,60 +167,54 @@ class SearchEngine:
             )
 
     async def get_document(self, doc_id: str) -> dict | None:
-        """Fetches full document metadata + extracted text for preview."""
-        await self.ensure_initialized()
+        """Fetches full document metadata + extracted text for unified preview."""
         try:
             conn = await DatabaseManager.get_connection()
             try:
                 cursor = await conn.execute('''
-                    SELECT d.*, fts.content
-                    FROM documents d
-                    LEFT JOIN documents_fts fts ON d.id = fts.id
-                    WHERE d.id = ?
+                    SELECT f.id, f.filename, f.path, f.extension, f.size, f.category, f.created_at, f.indexed_at,
+                           c.extracted_text, c.extraction_confidence, c.extraction_status
+                    FROM files f
+                    LEFT JOIN document_content c ON f.id = c.file_id
+                    WHERE f.id = ?
                 ''', (doc_id,))
                 row = await cursor.fetchone()
                 if not row:
                     return None
 
-                tags = []
-                try:
-                    tags = json.loads(row[8]) if row[8] else []
-                except (json.JSONDecodeError, TypeError):
-                    pass
-
+                is_ocr = row[10] in ['OCR_PDF', 'OCR_IMAGE'] if row[10] else False
                 return {
                     "id": row[0],
                     "filename": row[1],
                     "path": row[2],
                     "file_type": row[3],
                     "file_size": row[4],
-                    "folder_path": row[5],
-                    "is_ocr": bool(row[6]),
-                    "ocr_confidence": row[7],
-                    "tags": tags,
-                    "page_count": row[9],
-                    "created_at": row[10],
-                    "indexed_at": row[11],
-                    "content": row[12] or "",
+                    "folder_path": "",
+                    "is_ocr": is_ocr,
+                    "ocr_confidence": row[9] or 1.0,
+                    "tags": [row[5]] if row[5] else [],
+                    "page_count": 1,
+                    "created_at": str(row[6]),
+                    "indexed_at": str(row[7]),
+                    "content": row[8] or "",
                 }
             finally:
                 await conn.close()
         except Exception as e:
-            logger.error(f"Failed to get document {doc_id}: {e}")
+            logger.error(f"Failed to get unified document {doc_id}: {e}")
             return None
 
     async def delete_document(self, doc_id: str) -> bool:
-        """Removes a document from the index."""
+        """Removes a document from the unified index."""
         try:
-            await self.ensure_initialized()
             conn = await DatabaseManager.get_connection()
             try:
-                await conn.execute('DELETE FROM documents WHERE id = ?', (doc_id,))
-                await conn.execute('DELETE FROM documents_fts WHERE id = ?', (doc_id,))
+                await conn.execute('DELETE FROM files WHERE id = ?', (doc_id,))
+                await conn.execute('DELETE FROM document_content WHERE file_id = ?', (doc_id,))
                 await conn.commit()
                 return True
             finally:
                 await conn.close()
         except Exception as e:
-            logger.error(f"Failed to delete document {doc_id}: {e}")
+            logger.error(f"Failed to delete unified document {doc_id}: {e}")
             return False

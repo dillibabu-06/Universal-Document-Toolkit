@@ -9,23 +9,23 @@ export default {
     extend: {
       colors: {
         background: {
-          light: '#fafafa',
-          dark: '#111318',
+          light: '#f8fafc',
+          dark: '#0f172a',
         },
-        sidebar: '#16181d',
+        sidebar: '#020617',
         panel: {
           light: '#ffffff',
-          dark: '#1b1d23',
+          dark: '#1e293b',
         },
-        elevated: '#20232a',
-        hover: '#2a2d35',
+        elevated: '#334155',
+        hover: '#334155',
         border: {
-          light: '#e4e4e7',
-          dark: '#272a30',
+          light: '#e2e8f0',
+          dark: '#334155',
         },
         accent: {
-          DEFAULT: '#4f46e5',
-          hover: '#4338ca',
+          DEFAULT: '#6366f1',
+          hover: '#4f46e5',
         },
         // DocuSuite Pro Theme Colors
         "tertiary-container": "#006693",
@@ -65,10 +65,10 @@ export default {
         "on-surface-variant": "#464555",
         "error": "#ba1a1a",
         "on-secondary-fixed": "#0b1c30",
-        "background": {
-          light: '#fafafa',
-          dark: '#111318',
-          DEFAULT: '#f7f9fb'
+        background: {
+          light: '#f8fafc',
+          dark: '#0f172a',
+          DEFAULT: '#f8fafc'
         },
         "on-secondary-fixed-variant": "#38485d",
         "primary-fixed": "#e2dfff",
@@ -92,6 +92,8 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
       },
       backdropBlur: {
         xs: '2px',

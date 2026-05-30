@@ -1,8 +1,13 @@
 import React from 'react';
-import { Filter, Layers, Search, Check, FileText } from 'lucide-react';
+import { Filter, Layers, Search, Check, FileText, SplitSquareHorizontal } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { FileRecord } from '../../types';
+import PreviewEngine from './PreviewEngine';
+import MetadataInspector from './MetadataInspector';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
+import { Button } from '../../components/ui/Button';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 interface ExplorerViewProps {
   selectedCategory: string | null;
@@ -85,142 +90,175 @@ export default function ExplorerView({
           <Filter className="h-3 w-3" /> Filters
         </div>
         
-        <button 
+        <Button
+          variant={!selectedCategory ? 'primary' : 'outline'}
+          size="sm"
           onClick={() => setSelectedCategory(null)}
-          className={`px-2 py-0.5 text-xs rounded border transition-all ${!selectedCategory ? 'bg-zinc-800 text-zinc-200 border-zinc-700/60 font-semibold' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
+          className="h-6 text-xs px-2"
         >
           All Categories
-        </button>
+        </Button>
         {['Invoice', 'Receipt', 'Resume', 'Tax Document', 'Bank Statement', 'Contract', 'College Notes'].map(cat => {
           const hasFiles = files.some(f => f.category === cat);
           if (!hasFiles) return null;
           return (
-            <button 
+            <Button
               key={cat}
+              variant={selectedCategory === cat ? 'primary' : 'outline'}
+              size="sm"
               onClick={() => setSelectedCategory(cat)}
-              className={`px-2 py-0.5 text-xs rounded border transition-all ${selectedCategory === cat ? 'bg-zinc-800 text-zinc-200 border-zinc-700/60 font-semibold' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
+              className="h-6 text-xs px-2"
             >
               {cat}
-            </button>
+            </Button>
           );
         })}
 
         <div className="w-[1px] h-4 bg-zinc-800 mx-2"></div>
 
         {/* Extension filters */}
-        <button 
+        <Button
+          variant={!selectedExtension ? 'primary' : 'outline'}
+          size="sm"
           onClick={() => setSelectedExtension(null)}
-          className={`px-2 py-0.5 text-xs rounded border transition-all ${!selectedExtension ? 'bg-zinc-800 text-zinc-200 border-zinc-700/60 font-semibold' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
+          className="h-6 text-xs px-2"
         >
           All Exts
-        </button>
+        </Button>
         {availableExtensions.map(ext => (
-          <button 
+          <Button
             key={ext}
+            variant={selectedExtension === ext ? 'primary' : 'outline'}
+            size="sm"
             onClick={() => setSelectedExtension(ext)}
-            className={`px-2 py-0.5 text-xs rounded border uppercase transition-all ${selectedExtension === ext ? 'bg-zinc-800 text-zinc-200 border-zinc-700/60 font-semibold' : 'text-zinc-500 border-transparent hover:text-zinc-300'}`}
+            className="h-6 text-xs px-2 uppercase"
           >
             .{ext}
-          </button>
+          </Button>
         ))}
 
         <div className="w-[1px] h-4 bg-zinc-800 mx-2"></div>
 
-        <button 
+        <Button
+          variant={showDuplicates ? 'primary' : 'outline'}
+          size="sm"
           onClick={() => setShowDuplicates(!showDuplicates)}
-          className={`px-2 py-0.5 text-xs rounded border transition-all flex items-center gap-1 ${showDuplicates ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 font-semibold' : 'text-zinc-500 border-transparent hover:text-amber-500/70'}`}
+          className={`h-6 text-xs px-2 flex items-center gap-1 ${showDuplicates ? 'bg-amber-500 hover:bg-amber-600 text-black border-transparent' : 'text-zinc-500 hover:text-amber-500'}`}
         >
           <Layers className="h-3 w-3" />
           Show Duplicates
-          {duplicates.length > 0 && <span className="ml-1 bg-amber-500/20 px-1 rounded-sm text-[9px]">{duplicates.length}</span>}
-        </button>
+          {duplicates.length > 0 && <span className="ml-1 bg-black/20 px-1 rounded-sm text-[9px]">{duplicates.length}</span>}
+        </Button>
       </div>
 
       {/* Table Data stream or Duplicates View */}
       {!showDuplicates ? (
-        <div ref={parentRef} className="matte-panel overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
-          <table className="w-full text-left text-xs border-collapse table-dense">
-            <thead className="sticky top-0 z-10 bg-zinc-900 shadow-sm border-b border-border-dark text-explorer-header">
-              <tr>
-                <th className="px-4 py-2.5 w-6 text-center">
-                  <button onClick={toggleSelectAll} className="text-zinc-500 hover:text-zinc-300">
-                    {selectedRowIds.length === filteredFiles.length && filteredFiles.length > 0 ? (
-                      <Check className="h-3.5 w-3.5 text-indigo-400" />
-                    ) : (
-                      <div className="h-3 w-3 border border-zinc-700 rounded-sm"></div>
-                    )}
-                  </button>
-                </th>
-                <th className="px-4 py-2.5">Document Name</th>
-                <th className="px-4 py-2.5">Category</th>
-                <th className="px-4 py-2.5">Workflow Status</th>
-                <th className="px-4 py-2.5">Size</th>
-                <th className="px-4 py-2.5">Modified Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border-dark/20">
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
-                  <td colSpan={6} aria-hidden="true" />
-                </tr>
-              )}
-              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                const file = filteredFiles[virtualRow.index];
-                const isSelected = selectedFile?.id === file.id;
-                return (
-                  <tr 
-                    key={file.id} 
-                    onClick={() => setSelectedFile(file)}
-                    className={`hover-row cursor-pointer transition-colors border-b border-border-dark/20 ${isSelected ? 'selected-row' : ''}`}
-                    style={{ height: `${virtualRow.size}px` }}
-                  >
-                    <td className="px-4 py-2.5 text-center" onClick={(e) => { e.stopPropagation(); toggleRowSelection(file.id); }}>
-                      {selectedRowIds.includes(file.id) ? (
-                        <Check className="h-3.5 w-3.5 text-indigo-400" />
-                      ) : (
-                        <div className="h-3 w-3 border border-zinc-800 rounded-sm group-hover:border-zinc-600"></div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 text-explorer-row flex items-center gap-2 min-w-0">
-                      <FileText className={`h-4 w-4 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
-                      <div className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-zinc-200">{file.filename}</span>
-                        <span className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5">{file.path}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getCategoryColor(file.category)}`}>
-                        {file.category}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={getStatusBadge(getWorkflowStatus(file))}>
-                        {getWorkflowStatus(file)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-zinc-400 font-medium">{formatBytes(file.size)}</td>
-                    <td className="px-4 py-2.5 text-zinc-400 font-medium">{formatDate(file.modified_at)}</td>
-                  </tr>
-                );
-              })}
-              {rowVirtualizer.getVirtualItems().length > 0 && (
-                <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px` }}>
-                  <td colSpan={6} aria-hidden="true" />
-                </tr>
-              )}
-              {filteredFiles.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-12 text-center text-zinc-500 text-xs">
-                    <div className="flex flex-col items-center justify-center p-8 gap-2">
-                      <Search className="h-8 w-8 text-zinc-700 mb-1" />
-                      <span className="font-semibold text-zinc-400">No Documents Match Filter Criteria</span>
-                      <span className="text-[11px] text-zinc-500">Try clearing active category selections or query search keywords.</span>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-12 gap-6 h-[calc(100vh-280px)]">
+          {/* Main Table View */}
+          <div className={`${selectedFile ? 'col-span-7' : 'col-span-12'} flex flex-col min-h-0 transition-all duration-300`}>
+            <div ref={parentRef} className="matte-panel overflow-y-auto flex-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10 text-center px-4">
+                      <button onClick={toggleSelectAll} className="text-zinc-500 hover:text-zinc-300">
+                        {selectedRowIds.length === filteredFiles.length && filteredFiles.length > 0 ? (
+                          <Check className="h-3.5 w-3.5 text-indigo-400" />
+                        ) : (
+                          <div className="h-3 w-3 border border-zinc-700 rounded-sm"></div>
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Workflow Status</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Modified Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rowVirtualizer.getVirtualItems().length > 0 && (
+                    <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
+                      <td colSpan={6} aria-hidden="true" />
+                    </tr>
+                  )}
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const file = filteredFiles[virtualRow.index];
+                    const isSelected = selectedFile?.id === file.id;
+                    return (
+                      <TableRow 
+                        key={file.id} 
+                        onClick={() => setSelectedFile(file)}
+                        data-state={isSelected ? "selected" : undefined}
+                        className="cursor-pointer"
+                        style={{ height: `${virtualRow.size}px` }}
+                      >
+                        <TableCell className="text-center" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleRowSelection(file.id); }}>
+                          {selectedRowIds.includes(file.id) ? (
+                            <Check className="h-3.5 w-3.5 text-indigo-400 mx-auto" />
+                          ) : (
+                            <div className="h-3 w-3 border border-zinc-700 rounded-sm mx-auto hover:border-zinc-500"></div>
+                          )}
+                        </TableCell>
+                        <TableCell className="flex items-center gap-2 min-w-0">
+                          <FileText className={`h-4 w-4 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
+                          <div className="min-w-0 flex-1">
+                            <span className="block truncate font-semibold text-zinc-200">{file.filename}</span>
+                            <span className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5">{file.path}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getCategoryColor(file.category)}`}>
+                            {file.category}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={getStatusBadge(getWorkflowStatus(file))}>
+                            {getWorkflowStatus(file)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-zinc-400">{formatBytes(file.size)}</TableCell>
+                        <TableCell className="text-zinc-400">{formatDate(file.modified_at)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {rowVirtualizer.getVirtualItems().length > 0 && (
+                    <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px` }}>
+                      <td colSpan={6} aria-hidden="true" />
+                    </tr>
+                  )}
+                  {filteredFiles.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6}>
+                        <EmptyState 
+                          icon={<Search className="h-8 w-8" />}
+                          title="No Documents Match Filter"
+                          description="Try clearing active category selections or query search keywords."
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Right Inspector Pane */}
+          {selectedFile && (
+            <div className="col-span-5 flex flex-col min-h-0 bg-black/20 rounded-xl border border-white/5 overflow-y-auto animate-in slide-in-from-right-4 duration-300">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border-dark shrink-0">
+                <h2 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5 uppercase tracking-wider">
+                  <SplitSquareHorizontal size={14} className="text-indigo-400" /> Inspector
+                </h2>
+              </div>
+              <div className="flex flex-col p-4 gap-6 min-h-0 flex-1 overflow-y-auto">
+                <div className="h-[250px] shrink-0">
+                  <PreviewEngine file={selectedFile} />
+                </div>
+                <MetadataInspector file={selectedFile} formatBytes={formatBytes} formatDate={formatDate} />
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="matte-panel overflow-y-auto space-y-4 p-4" style={{ maxHeight: 'calc(100vh - 280px)' }}>
@@ -257,22 +295,23 @@ export default function ExplorerView({
         <div className="p-3 bg-zinc-900 border border-border-dark rounded-md flex items-center justify-between px-4 select-none">
           <span className="text-xs font-semibold text-zinc-400">{selectedRowIds.length} files selected for bulk review</span>
           <div className="flex gap-2">
-            <button 
+            <Button 
+              variant="outline"
               onClick={() => alert(`Bulk move trigger for ${selectedRowIds.length} items.`)}
-              className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-border-dark/80 rounded text-xs font-semibold"
             >
               Organize Locations
-            </button>
-            <button 
+            </Button>
+            <Button 
+              variant="outline"
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 border-red-500/20"
               onClick={() => {
                 if (confirm(`Relocate ${selectedRowIds.length} select files to Recycle Bin?`)) {
                   setSelectedRowIds([]);
                 }
               }}
-              className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-red-400 border border-border-dark/80 rounded text-xs font-semibold"
             >
               Recycle Selected
-            </button>
+            </Button>
           </div>
         </div>
       )}

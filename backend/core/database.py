@@ -1,9 +1,10 @@
+import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 from backend.config.settings import settings
 
-# Aiosqlite requires exactly three slashes for absolute paths, so we format it carefully
-db_path = str(settings.DATABASE_URL)
+# Dynamically locate the unified SQLite database via environment variable injected by Tauri core
+db_path = os.getenv("SHARED_DATABASE_PATH") or str(settings.DATABASE_URL)
 if not db_path.startswith('/'):
     db_path = '/' + db_path
 DATABASE_URL = f"sqlite+aiosqlite:///{db_path}"

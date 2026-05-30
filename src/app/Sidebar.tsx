@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Cpu, Plus, ChevronDown, Layers, Search, Sliders, Activity, Terminal, FileText, ShieldCheck, Copy
+  Cpu, Plus, ChevronDown, Layers, Search, Sliders, Activity, Terminal, FileText, ShieldCheck, Copy,
+  Settings, FileSignature, FileDown
 } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -42,7 +43,7 @@ export default function Sidebar({
   const categories = ['Invoice', 'Receipt', 'Resume', 'Tax Document', 'Bank Statement', 'Contract', 'College Notes'];
 
   return (
-    <aside className="w-64 bg-[#0a0a0a]/90 backdrop-blur-xl border-r border-white/5 flex flex-col justify-between shrink-0 select-none transition-all duration-300">
+    <aside className="w-64 matte-sidebar flex flex-col justify-between shrink-0 select-none transition-all duration-300">
       <div className="flex flex-col min-h-0 flex-1">
         
         {/* Header Logo */}
@@ -51,7 +52,7 @@ export default function Sidebar({
             <div className="p-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-md shadow-[0_0_15px_rgba(99,102,241,0.15)]">
               <Cpu className="h-4 w-4 text-indigo-400" />
             </div>
-            <span className="text-sm font-semibold text-zinc-100 tracking-wide truncate max-w-[130px]">SDW</span>
+            <span className="text-base font-bold font-display text-slate-100 tracking-wide truncate max-w-[130px]">SDW Core</span>
           </div>
           
           <button 
@@ -70,7 +71,7 @@ export default function Sidebar({
           <div className="space-y-1">
             <div 
               onClick={() => toggleGroup('navigation')}
-              className="flex items-center justify-between text-[10px] font-bold tracking-widest uppercase text-zinc-500 px-2 py-1.5 hover:text-zinc-300 cursor-pointer mb-1"
+              className="flex items-center justify-between text-sidebar-label px-2 py-1.5 hover:text-slate-300 cursor-pointer mb-1"
             >
               <span>Workspace</span>
               <motion.div animate={{ rotate: sidebarGroups.navigation ? 0 : -90 }} transition={{ duration: 0.2 }}>
@@ -118,18 +119,39 @@ export default function Sidebar({
                     badge={rules.length > 0 ? rules.length : undefined}
                   />
                   <NavButton 
+                    icon={<FileDown className="h-4 w-4" />} 
+                    label="PDF Tools" 
+                    isActive={activeView === 'pdf-tools'} 
+                    onClick={() => setActiveView('pdf-tools')} 
+                    shortcut="⌥5"
+                  />
+                  <NavButton 
+                    icon={<FileSignature className="h-4 w-4" />} 
+                    label="Office Workspace" 
+                    isActive={activeView === 'office-workspace'} 
+                    onClick={() => setActiveView('office-workspace')} 
+                    shortcut="⌥6"
+                  />
+                  <NavButton 
                     icon={<Activity />} 
                     label="Logs" 
                     isActive={activeView === 'logs'} 
                     onClick={() => setActiveView('logs')} 
-                    shortcut="⌥5"
+                    shortcut="⌥7"
                   />
                   <NavButton 
                     icon={<Terminal />} 
                     label="Diagnostics" 
                     isActive={activeView === 'diagnostics'} 
                     onClick={() => setActiveView('diagnostics')} 
-                    shortcut="⌥6"
+                    shortcut="⌥8"
+                  />
+                  <NavButton 
+                    icon={<Settings className="h-4 w-4" />} 
+                    label="Settings" 
+                    isActive={activeView === 'settings'} 
+                    onClick={() => setActiveView('settings')} 
+                    shortcut="⌥9"
                   />
                 </motion.div>
               )}
@@ -140,7 +162,7 @@ export default function Sidebar({
           <div className="space-y-1">
             <div 
               onClick={() => toggleGroup('smartFilters')}
-              className="flex items-center justify-between text-[10px] font-bold tracking-widest uppercase text-zinc-500 px-2 py-1.5 hover:text-zinc-300 cursor-pointer mb-1"
+              className="flex items-center justify-between text-sidebar-label px-2 py-1.5 hover:text-slate-300 cursor-pointer mb-1"
             >
               <span>Smart Collections</span>
               <motion.div animate={{ rotate: sidebarGroups.smartFilters ? 0 : -90 }} transition={{ duration: 0.2 }}>
@@ -210,10 +232,10 @@ function NavButton({ icon, label, isActive, onClick, shortcut, badge }: { icon: 
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all group relative overflow-hidden ${
+      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sidebar-item group relative overflow-hidden ${
         isActive 
-          ? 'bg-indigo-500/10 text-indigo-100' 
-          : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
+          ? 'bg-accent/15 text-indigo-200 font-semibold shadow-inner' 
+          : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
       }`}
     >
       {isActive && (

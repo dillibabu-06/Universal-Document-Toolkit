@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from pydantic import BaseModel
 from backend.config.settings import settings
 import os
 import shutil
@@ -152,4 +153,36 @@ async def upload_document(file: UploadFile = File(...)):
         
     except Exception as e:
         logger.error(f"Failed to upload document: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+class LocalOcrRequest(BaseModel):
+    doc_id: str
+    file_path: str
+
+@router.post("/ocr/local")
+async def trigger_local_ocr(req: LocalOcrRequest):
+    """Triggers background OCR for a local document path in watched workspaces."""
+    try:
+        path = Path(req.file_path)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="File path does not exist on disk")
+
+        file_type = path.suffix.lower()
+        is_pdf = file_type == ".pdf"
+
+        from backend.ocr.queue import ocr_queue
+        from backend.models.ocr_models import OCRTask
+        
+        task = OCRTask(
+            doc_id=req.doc_id,
+            filename=path.name,
+            file_path=path,
+            is_pdf=is_pdf
+        )
+        job_id = ocr_queue.submit_job(task)
+        logger.info(f"Local OCR job submitted for {path.name}. Job ID: {job_id}")
+        
+        return {"status": "success", "job_id": job_id, "message": "OCR job queued."}
+    except Exception as e:
+        logger.error(f"Failed to submit local OCR job: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -5,7 +5,7 @@ from loguru import logger
 from backend.config.settings import settings
 from backend.core.logger import setup_logging
 from backend.core.validation import run_startup_checks
-from backend.api.routers import search, documents, pdf_tools, office_tools, automation, settings
+from backend.api.routers import search, documents, pdf_tools, office_tools, automation, settings, intelligence
 from backend.plugins.manager import PluginManager
 
 # Setup logging and validations
@@ -36,6 +36,7 @@ app.include_router(pdf_tools.router)
 app.include_router(office_tools.router)
 app.include_router(automation.router)
 app.include_router(settings.router)
+app.include_router(intelligence.router)
 
 # Mount plugin routers dynamically
 for plugin in PluginManager.get_plugins():
