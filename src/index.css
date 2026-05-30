@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply transition-colors duration-150 selection:bg-indigo-500/20 selection:text-indigo-200 text-zinc-300;
+  }
+}
+
+/* 1. Flat, Layered Surfaces Design System (Linear style) */
+.matte-bg {
+  @apply bg-background-dark;
+}
+
+.matte-sidebar {
+  @apply bg-sidebar;
+}
+
+.matte-panel {
+  @apply bg-panel-dark border border-border-dark rounded-md;
+}
+
+.matte-panel-elevated {
+  @apply bg-elevated border border-border-dark rounded-lg shadow-md;
+}
+
+.hover-row {
+  @apply hover:bg-hover/30 transition-colors duration-100;
+}
+
+/* Selected row premium indicator */
+.selected-row {
+  @apply bg-indigo-500/5 border-l-2 border-indigo-500/80;
+}
+
+/* Alternating table rows visually distinct */
+.table-dense tr:nth-child(odd) {
+  @apply bg-panel-dark;
+}
+.table-dense tr:nth-child(even) {
+  @apply bg-[#14161c]/40;
+}
+
+/* 2. Premium, Highly-Dense Desktop Typography scale */
+.text-explorer-row {
+  @apply text-[13px] font-medium text-zinc-200 tracking-wide;
+}
+
+.text-explorer-header {
+  @apply text-[10px] font-semibold text-zinc-500 uppercase tracking-wider select-none border-b border-border-dark/80 bg-zinc-900/40;
+}
+
+.text-sidebar-label {
+  @apply text-[11px] font-bold text-zinc-500 tracking-wider uppercase select-none;
+}
+
+.text-sidebar-item {
+  @apply text-[12px] font-medium text-zinc-400 transition-colors duration-100;
+}
+
+.text-metadata-mono {
+  @apply text-[10px] font-mono text-zinc-400 tracking-tight leading-normal;
+}
+
+/* 3. Keyboard Shortcut Badges */
+.kbd-badge {
+  @apply inline-flex items-center justify-center h-4 px-1.5 text-[9px] font-bold font-mono text-zinc-500 bg-zinc-950/80 border border-border-dark/80 rounded select-none shadow-sm;
+}
+
+/* 4. Elegant, Minimal Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border-dark/70 rounded-full hover:bg-hover transition-colors duration-150;
+}
+
+/* 5. Custom status color badges */
+.badge-status {
+  @apply text-[10px] font-semibold px-2 py-0.5 rounded-full border select-none tracking-wide text-center inline-block;
+}
+
+.active-accent-indicator {
+  @apply border-l-2 border-indigo-500 text-zinc-200 font-semibold bg-zinc-800/80;
+}
+
+/* Dotted/Dashed Empty state borders */
+.dash-border {
+  background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='8' ry='8' stroke='%23272A30' stroke-width='2' stroke-dasharray='6%2c 4' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
+  border-radius: 8px;
+}
+
+/* Command Palette elements */
+.cmd-palette-item {
+  @apply flex items-center justify-between p-2.5 rounded-md cursor-pointer transition-all duration-100 select-none;
+}
+.cmd-palette-item-active {
+  @apply bg-indigo-600/15 text-zinc-100 border-l-2 border-indigo-500;
+}
+
