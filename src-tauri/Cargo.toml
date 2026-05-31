@@ -10,8 +10,10 @@ tauri-build = { version = "1.2", features = [] }
 [dependencies]
 sdw_core = { path = "../core" }
 database = { path = "../database" }
-indexing = { path = "../indexing" }
 automation = { path = "../automation" }
+indexing = { path = "../indexing" }
+intelligence = { path = "../intelligence" }
+plugins = { path = "../plugins" }
 tauri = { version = "1.2", features = [ "updater", "dialog-all", "fs-all", "path-all", "custom-protocol"] }
 serde = { version = "1.0", features = ["derive"] }
 trash = "5.2.6"
@@ -21,6 +23,8 @@ uuid = { version = "1.4", features = ["v4"] }
 chrono = "0.4"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+walkdir = "2.5.0"
+zip = "8.6.0"
 
 [features]
 default = ["custom-protocol"]

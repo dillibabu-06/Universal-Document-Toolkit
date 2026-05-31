@@ -1,5 +1,10 @@
-import { FileRecord } from '../../types';
-import { Tag, Calendar, Building, DollarSign, BrainCircuit, ScanText, Hash } from 'lucide-react';
+import { FileRecord, DocumentEntity } from '../../types';
+import { Tag, Calendar, Building, DollarSign, BrainCircuit, ScanText, Hash, ShieldCheck, Lock } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/tauri';
+import { useState, useEffect } from 'react';
+import { Button } from '../../components/ui/Button';
+import { useWorkspaceStore } from '../../store/workspaceStore';
+import { Vault } from '../../types/vault';
 
 interface MetadataInspectorProps {
   file: FileRecord | null;
@@ -8,20 +13,35 @@ interface MetadataInspectorProps {
 }
 
 export default function MetadataInspector({ file, formatBytes, formatDate }: MetadataInspectorProps) {
+  const [entities, setEntities] = useState<DocumentEntity[]>([]);
+  const [vaults, setVaults] = useState<Vault[]>([]);
+  const [selectedVaultId, setSelectedVaultId] = useState<string>('');
+  const { activeWorkspaceId } = useWorkspaceStore();
+
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      invoke<Vault[]>('list_vaults', { workspaceId: activeWorkspaceId })
+        .then(res => {
+          setVaults(res);
+          if (res.length > 0) setSelectedVaultId(res[0].id);
+        })
+        .catch(console.error);
+    }
+  }, [activeWorkspaceId]);
+
+  useEffect(() => {
+    if (file) {
+      invoke<DocumentEntity[]>('get_file_entities', { fileId: file.id })
+        .then(res => setEntities(res))
+        .catch(console.error);
+    } else {
+      setEntities([]);
+    }
+  }, [file]);
+
   if (!file) return null;
 
-  let metadataObj: { fields: Record<string, string> } = { fields: {} };
-  
-  if (file.extracted_metadata) {
-    try {
-      metadataObj = JSON.parse(file.extracted_metadata);
-    } catch (e) {
-      console.error("Failed to parse extracted_metadata", e);
-    }
-  }
-
-  const fields = metadataObj.fields || {};
-  const hasIntelligence = Object.keys(fields).length > 0;
+  const hasIntelligence = entities.length > 0;
 
   // Helper to get nice icons/labels for known intelligence fields
   const renderIntelligenceChip = (key: string, val: string) => {
@@ -51,6 +71,17 @@ export default function MetadataInspector({ file, formatBytes, formatDate }: Met
         <span className="text-xs font-semibold truncate" title={val}>{val}</span>
       </div>
     );
+  };
+
+  const handleMoveToVault = async () => {
+    if (!file || !selectedVaultId) return;
+    try {
+      await invoke('add_to_vault', { vaultId: selectedVaultId, filePath: file.path });
+      alert('File successfully encrypted and moved to Vault!');
+    } catch (e) {
+      console.error(e);
+      alert(`Failed to move to vault: ${e}`);
+    }
   };
 
   return (
@@ -90,14 +121,14 @@ export default function MetadataInspector({ file, formatBytes, formatDate }: Met
           </h3>
           {hasIntelligence && (
             <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-              {Object.keys(fields).length} Entities
+              {entities.length} Entities
             </span>
           )}
         </div>
 
         {hasIntelligence ? (
           <div className="grid grid-cols-2 gap-2">
-            {Object.entries(fields).map(([k, v]) => renderIntelligenceChip(k, v))}
+            {entities.map((e) => renderIntelligenceChip(e.key, e.value))}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-8 text-zinc-500">
@@ -105,6 +136,34 @@ export default function MetadataInspector({ file, formatBytes, formatDate }: Met
             <p className="text-xs text-center font-medium opacity-70">
               No entities extracted<br/>for this document type.
             </p>
+          </div>
+        )}
+      </div>
+
+
+      {/* Security Actions */}
+      <div className="bg-zinc-900/50 p-4 rounded-xl border border-border-dark mt-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-3 flex items-center gap-1.5">
+          <ShieldCheck size={12} /> Security Actions
+        </h3>
+        {vaults.length > 0 ? (
+          <div className="space-y-3">
+            <select
+              value={selectedVaultId}
+              onChange={(e) => setSelectedVaultId(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-lg py-2 px-3 text-xs text-slate-200 focus:border-indigo-500/50 outline-none"
+            >
+              {vaults.map(v => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+            <Button variant="outline" size="sm" className="w-full gap-2 text-rose-400 border-rose-500/20 hover:bg-rose-500/10" onClick={handleMoveToVault}>
+              <Lock size={12} /> Move to Vault
+            </Button>
+          </div>
+        ) : (
+          <div className="text-[10px] text-zinc-500 text-center p-2">
+            Create a Security Vault in Settings to encrypt this file.
           </div>
         )}
       </div>

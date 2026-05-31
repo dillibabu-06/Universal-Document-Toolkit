@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
-import { Layers, FileDown, Eye, Shield, FilePlus, FileText, X, Activity, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Layers, FileDown, Eye, Shield, FilePlus, FileText, X, Activity, Play, CheckCircle2, AlertCircle, Lock, FileArchive, RotateCw } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Toolbar } from '../../components/ui/Toolbar';
 
 export default function PdfStudioView() {
   const [activePdfTool, setActivePdfTool] = useState('merge');
@@ -64,29 +63,35 @@ export default function PdfStudioView() {
       </div>
 
       {/* Sub-Navigation for Tools */}
-      <div className="mb-8 w-fit">
-        <Toolbar>
-          {[
-            { id: 'merge', label: 'Merge', icon: Layers },
-            { id: 'split', label: 'Split', icon: FileDown },
-            { id: 'watermark', label: 'Watermark', icon: Eye },
-            { id: 'encrypt', label: 'Encrypt', icon: Shield },
-          ].map(tool => {
-            const ToolIcon = tool.icon;
-            const isActive = activePdfTool === tool.id;
-            return (
-              <Button
-                key={tool.id}
-                variant={isActive ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => { setActivePdfTool(tool.id); setPdfFiles([]); setUploadStatus(null); }}
-                className="gap-2"
-              >
-                <ToolIcon size={14} /> {tool.label}
-              </Button>
-            );
-          })}
-        </Toolbar>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { id: 'merge', label: 'Merge PDFs', desc: 'Combine multiple into one', icon: Layers, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+          { id: 'split', label: 'Split PDF', desc: 'Extract pages to new files', icon: FileDown, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+          { id: 'watermark', label: 'Watermark', desc: 'Add text to all pages', icon: Eye, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { id: 'encrypt', label: 'Encrypt', desc: 'Password protect document', icon: Lock, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+          { id: 'compress', label: 'Compress', desc: 'Reduce file size', icon: FileArchive, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+          { id: 'rotate', label: 'Rotate', desc: 'Rotate document pages', icon: RotateCw, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+        ].map(tool => {
+          const ToolIcon = tool.icon;
+          const isActive = activePdfTool === tool.id;
+          return (
+            <div
+              key={tool.id}
+              onClick={() => { setActivePdfTool(tool.id); setPdfFiles([]); setUploadStatus(null); }}
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${isActive ? 'bg-indigo-500/5 border-indigo-500/40 shadow-lg' : 'bg-zinc-900/50 border-white/5 hover:border-indigo-500/20 hover:bg-zinc-800/50'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${tool.bg} ${tool.color}`}>
+                  <ToolIcon size={20} />
+                </div>
+                <div>
+                  <h3 className={`text-sm font-bold ${isActive ? 'text-indigo-300' : 'text-slate-200'}`}>{tool.label}</h3>
+                  <p className="text-[10px] text-slate-500">{tool.desc}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-12 gap-8 flex-1">

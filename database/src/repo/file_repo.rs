@@ -3,7 +3,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::params;
 
 use sdw_core::error::{AppError, Result};
-use sdw_core::models::{DuplicateCluster, FileRecord};
+use sdw_core::models::{DuplicateCluster, FileRecord, DocumentEntity};
 
 pub struct FileRepository<'a> {
     conn: &'a PooledConnection<SqliteConnectionManager>,
@@ -33,6 +33,34 @@ impl<'a> FileRepository<'a> {
             ],
         ).map_err(|e| AppError::Database(format!("Failed to upsert file record: {}", e)))?;
 
+        Ok(())
+    }
+
+    pub fn upsert_batch(&self, files: &[FileRecord]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction().map_err(|e| AppError::Database(format!("Failed to start transaction: {}", e)))?;
+        {
+            let mut stmt = tx.prepare(
+                "INSERT OR REPLACE INTO files (id, workspace_id, filename, extension, path, size, hash, created_at, modified_at, indexed_at, category)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)"
+            ).map_err(|e| AppError::Database(format!("Failed to prepare batch upsert: {}", e)))?;
+
+            for file in files {
+                stmt.execute(params![
+                    file.id,
+                    file.workspace_id,
+                    file.filename,
+                    file.extension,
+                    file.path,
+                    file.size as i64,
+                    file.hash,
+                    file.created_at,
+                    file.modified_at,
+                    file.indexed_at,
+                    file.category,
+                ]).map_err(|e| AppError::Database(format!("Batch execute failed: {}", e)))?;
+            }
+        }
+        tx.commit().map_err(|e| AppError::Database(format!("Transaction commit failed: {}", e)))?;
         Ok(())
     }
 
@@ -132,7 +160,7 @@ impl<'a> FileRepository<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn search_fts(&self, workspace_id: &str, query_str: &str) -> Result<Vec<FileRecord>> {
+    pub fn search_fts(&self, workspace_id: &str, query_str: &str, limit: usize, offset: usize) -> Result<Vec<FileRecord>> {
         let sanitized = query_str
             .replace("\"", "\"\"")
             .replace('*', "")
@@ -147,17 +175,90 @@ impl<'a> FileRepository<'a> {
              FROM files f
              JOIN files_fts fts ON fts.file_id = f.id
              WHERE f.workspace_id = ?1 AND files_fts MATCH ?2
-             ORDER BY rank"
+             ORDER BY rank
+             LIMIT ?3 OFFSET ?4"
         ).map_err(|e| AppError::Database(format!("Failed to prepare search: {}", e)))?;
 
         let file_iter = stmt
-            .query_map(params![workspace_id, clean_query], |row| {
+            .query_map(params![workspace_id, clean_query, limit as i64, offset as i64], |row| {
                 let mut record = Self::row_to_record(row)?;
                 let snippet_str: Option<String> = row.get(11).ok();
                 record.snippet = snippet_str;
                 Ok(record)
             })
             .map_err(|e| AppError::Database(format!("FTS Query execution failed: {}", e)))?;
+
+        let mut results = Vec::new();
+        for res in file_iter {
+            results.push(res.map_err(|e| AppError::Database(e.to_string()))?);
+        }
+
+        Ok(results)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub fn search_smart(
+        &self,
+        workspace_id: &str,
+        keyword: &str,
+        category: Option<&str>,
+        amount_gt: Option<f64>,
+        amount_lt: Option<f64>,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<FileRecord>> {
+        let sanitized = keyword
+            .replace("\"", "\"\"")
+            .replace('*', "")
+            .replace('^', "")
+            .replace('(', "")
+            .replace(')', "");
+        let clean_query = format!("\"{}\"*", sanitized);
+
+        let mut query = String::from(
+            "SELECT f.id, f.workspace_id, f.filename, f.extension, f.path, f.size, f.hash, f.created_at, f.modified_at, f.indexed_at, f.category,
+             snippet(files_fts, -1, '<b>', '</b>', '...', 10) as match_snippet
+             FROM files f
+             JOIN files_fts fts ON fts.file_id = f.id
+             WHERE f.workspace_id = ?1 "
+        );
+
+        if !sanitized.trim().is_empty() {
+            query.push_str(" AND files_fts MATCH ?2 ");
+        }
+
+        if category.is_some() {
+            query.push_str(&format!(" AND f.category = '{}' ", category.unwrap()));
+        }
+
+        if amount_gt.is_some() || amount_lt.is_some() {
+            query.push_str(" AND EXISTS (SELECT 1 FROM document_entities e WHERE e.file_id = f.id AND e.key = 'TotalAmount' ");
+            if let Some(gt) = amount_gt {
+                query.push_str(&format!(" AND CAST(e.value AS REAL) > {} ", gt));
+            }
+            if let Some(lt) = amount_lt {
+                query.push_str(&format!(" AND CAST(e.value AS REAL) < {} ", lt));
+            }
+            query.push_str(") ");
+        }
+
+        query.push_str(" ORDER BY rank LIMIT ?3 OFFSET ?4");
+
+        let mut stmt = self.conn.prepare(&query)
+            .map_err(|e| AppError::Database(format!("Failed to prepare smart search: {}", e)))?;
+
+        let params: &[&dyn rusqlite::ToSql] = if !sanitized.trim().is_empty() {
+            &[&workspace_id, &clean_query, &(limit as i64), &(offset as i64)]
+        } else {
+            &[&workspace_id, &"", &(limit as i64), &(offset as i64)]
+        };
+
+        let file_iter = stmt.query_map(params, |row| {
+            let mut record = Self::row_to_record(row)?;
+            let snippet_str: Option<String> = row.get(11).ok();
+            record.snippet = snippet_str;
+            Ok(record)
+        }).map_err(|e| AppError::Database(format!("Smart query execution failed: {}", e)))?;
 
         let mut results = Vec::new();
         for res in file_iter {
@@ -298,5 +399,50 @@ impl<'a> FileRepository<'a> {
             category: row.get(10)?,
             snippet: None,
         })
+    }
+
+    pub fn insert_entities(&self, entities: &[DocumentEntity]) -> Result<()> {
+        let tx = self.conn.unchecked_transaction().map_err(|e| AppError::Database(format!("Failed to start transaction: {}", e)))?;
+        {
+            let mut stmt = tx.prepare(
+                "INSERT INTO document_entities (id, file_id, key, value, confidence)
+                 VALUES (?1, ?2, ?3, ?4, ?5)"
+            ).map_err(|e| AppError::Database(format!("Failed to prepare entities insert: {}", e)))?;
+
+            for entity in entities {
+                stmt.execute(params![
+                    entity.id,
+                    entity.file_id,
+                    entity.key,
+                    entity.value,
+                    entity.confidence as f64,
+                ]).map_err(|e| AppError::Database(format!("Entity execute failed: {}", e)))?;
+            }
+        }
+        tx.commit().map_err(|e| AppError::Database(format!("Failed to commit entities: {}", e)))?;
+        Ok(())
+    }
+
+    pub fn get_entities_by_file_id(&self, file_id: &str) -> Result<Vec<DocumentEntity>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, file_id, key, value, confidence FROM document_entities WHERE file_id = ?1"
+        ).map_err(|e| AppError::Database(format!("Failed to prepare get entities: {}", e)))?;
+        
+        let iter = stmt.query_map(params![file_id], |row| {
+            Ok(DocumentEntity {
+                id: row.get(0)?,
+                file_id: row.get(1)?,
+                key: row.get(2)?,
+                value: row.get(3)?,
+                confidence: row.get::<_, f64>(4)? as f32,
+            })
+        }).map_err(|e| AppError::Database(format!("Failed to query entities: {}", e)))?;
+
+        let mut entities = Vec::new();
+        for item in iter {
+            entities.push(item.map_err(|e| AppError::Database(format!("Row error: {}", e)))?);
+        }
+        
+        Ok(entities)
     }
 }

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Settings, Eye, Search, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui/Tabs';
+import PluginManager from './PluginManager';
+import BackupRestore from './BackupRestore';
 
 export default function SettingsView() {
   const [settingsTab, setSettingsTab] = useState('general');
@@ -55,7 +57,9 @@ export default function SettingsView() {
           {[
             { id: 'general', name: 'General', icon: Settings },
             { id: 'ocr', name: 'OCR & Engine', icon: Eye },
-            { id: 'search', name: 'Search Settings', icon: Search }
+            { id: 'search', name: 'Search Settings', icon: Search },
+            { id: 'plugins', name: 'WASM Plugins', icon: Settings },
+            { id: 'backup', name: 'Backup & Restore', icon: Settings }
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -187,6 +191,14 @@ export default function SettingsView() {
             
             <TabsContent value="search" className="mt-0 outline-none">
               {/* Empty for now to satisfy tabs implementation */}
+            </TabsContent>
+
+            <TabsContent value="plugins" className="mt-0 outline-none">
+              <PluginManager />
+            </TabsContent>
+
+            <TabsContent value="backup" className="mt-0 outline-none">
+              <BackupRestore />
             </TabsContent>
           </div>
         </div>

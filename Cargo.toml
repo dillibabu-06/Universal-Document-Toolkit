@@ -4,6 +4,6 @@ members = [
     "core",
     "database",
     "indexing",
-    "automation", "intelligence",
+    "automation", "intelligence", "plugins", "example-plugins/invoice-parser",
 ]
 resolver = "2"

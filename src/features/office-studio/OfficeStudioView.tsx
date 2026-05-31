@@ -1,8 +1,7 @@
 import { useState, useRef } from 'react';
-import { FileSignature, FileDown, Table as TableIcon, Layers, RefreshCw, FilePlus, X, Trash2, Activity, Play, FileArchive, CheckCircle2, AlertCircle, Type } from 'lucide-react';
+import { FileSignature, FileDown, Table as TableIcon, Layers, RefreshCw, FilePlus, X, Trash2, Activity, Play, FileArchive, CheckCircle2, AlertCircle, Type, FileCog } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Toolbar } from '../../components/ui/Toolbar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '../../components/ui/Table';
 
 export default function OfficeStudioView() {
@@ -85,31 +84,35 @@ export default function OfficeStudioView() {
       </div>
 
       {/* Sub-Navigation for Tools */}
-      {/* Sub-Navigation for Tools */}
-      <div className="mb-8 w-fit">
-        <Toolbar>
-          {[
-            { id: 'word-template', label: 'DOCX Template', icon: FileSignature },
-            { id: 'word-pdf', label: 'DOCX → PDF', icon: FileDown },
-            { id: 'excel-preview', label: 'Spreadsheet Preview', icon: TableIcon },
-            { id: 'excel-merge', label: 'Merge Sheets', icon: Layers },
-            { id: 'excel-convert', label: 'Convert Format', icon: RefreshCw },
-          ].map(tool => {
-            const ToolIcon = tool.icon;
-            const isActive = activeOfficeTool === tool.id;
-            return (
-              <Button
-                key={tool.id}
-                variant={isActive ? 'primary' : 'ghost'}
-                size="sm"
-                onClick={() => { setActiveOfficeTool(tool.id); setOfficeFiles([]); setUploadStatus(null); setExcelData(null); }}
-                className="gap-2"
-              >
-                <ToolIcon size={14} /> {tool.label}
-              </Button>
-            );
-          })}
-        </Toolbar>
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { id: 'word-template', label: 'DOCX Template', desc: 'Inject variables into templates', icon: FileSignature, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+          { id: 'word-pdf', label: 'DOCX → PDF', desc: 'Convert Word to PDF', icon: FileDown, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+          { id: 'excel-preview', label: 'Spreadsheet Preview', desc: 'View Excel & CSV offline', icon: TableIcon, color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
+          { id: 'excel-merge', label: 'Merge Sheets', desc: 'Combine multiple workbooks', icon: Layers, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+          { id: 'excel-convert', label: 'Convert Format', desc: 'XLSX to CSV or vice versa', icon: RefreshCw, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+          { id: 'generate-report', label: 'Report Builder', desc: 'Generate tabular reports', icon: FileCog, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+        ].map(tool => {
+          const ToolIcon = tool.icon;
+          const isActive = activeOfficeTool === tool.id;
+          return (
+            <div
+              key={tool.id}
+              onClick={() => { setActiveOfficeTool(tool.id); setOfficeFiles([]); setUploadStatus(null); setExcelData(null); }}
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${isActive ? 'bg-emerald-500/5 border-emerald-500/40 shadow-lg' : 'bg-zinc-900/50 border-white/5 hover:border-emerald-500/20 hover:bg-zinc-800/50'}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${tool.bg} ${tool.color}`}>
+                  <ToolIcon size={20} />
+                </div>
+                <div>
+                  <h3 className={`text-sm font-bold ${isActive ? 'text-emerald-300' : 'text-slate-200'}`}>{tool.label}</h3>
+                  <p className="text-[10px] text-slate-500">{tool.desc}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-12 gap-8 flex-1">

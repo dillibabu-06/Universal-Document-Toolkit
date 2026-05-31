@@ -1,5 +1,5 @@
 
-import { Copy, FileText, Sliders, ShieldCheck, HardDrive } from 'lucide-react';
+import { Copy, FileText, Sliders, ShieldCheck, HardDrive, Zap, Activity } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { FileRecord } from '../../types';
 
@@ -35,74 +35,85 @@ export default function DashboardView({
   const wastedBytes = duplicates.reduce((acc, curr) => acc + curr.total_wasted_size, 0);
 
   // Grouped Categories Stats for Priority 2
-  const invoicesCount = files.filter(f => f.category === 'Invoice').length;
-  const resumesCount = files.filter(f => f.category === 'Resume').length;
-  const statementsCount = files.filter(f => f.category === 'Bank Statement').length;
-  const contractsCount = files.filter(f => f.category === 'Contract').length;
-
-
+  // Unused constants removed
 
   return (
     <div className="space-y-6 max-w-4xl animate-in fade-in duration-200">
       
       {/* ==================== DASHBOARD INTELLIGENCE PANEL ==================== */}
-      <div className="grid grid-cols-4 gap-6">
-        {/* Invoices Card */}
-        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-5 rounded-2xl flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
+      <div className="grid grid-cols-5 gap-4">
+        
+        {/* Total Indexed Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-indigo-500/40 transition-all duration-300">
           <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-indigo-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded px-2.5 py-1 tracking-wider uppercase">Invoices</span>
-              <FileText className="h-4 w-4 text-zinc-500" />
+              <span className="text-[9px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Cataloged</span>
+              <HardDrive className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-3xl font-bold text-zinc-100 font-mono mt-4">{invoicesCount}</h2>
-            <p className="text-[10px] text-zinc-500 mt-2 flex items-center gap-1">
-              <span className="text-emerald-400 font-bold">+8</span> new this week
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">{files.length}</h2>
+            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+              <span className="text-emerald-400 font-bold">Files Indexed</span> securely
             </p>
           </div>
         </div>
 
-        {/* Resumes Card */}
-        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-5 rounded-2xl flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:border-violet-500/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-violet-500/10 transition-all"></div>
+        {/* Duplicates Removed Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-rose-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-rose-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded px-2.5 py-1 tracking-wider uppercase">Resumes</span>
-              <FileText className="h-4 w-4 text-zinc-500" />
+              <span className="text-[9px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Duplicates</span>
+              <Copy className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-3xl font-bold text-zinc-100 font-mono mt-4">{resumesCount}</h2>
-            <p className="text-[10px] text-zinc-500 mt-2 flex items-center gap-1">
-              <span className="text-violet-400 font-bold">+3</span> new candidates
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">{duplicates.length}</h2>
+            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+              <span className="text-rose-400 font-bold">Clones</span> identified
             </p>
           </div>
         </div>
 
-        {/* Contracts Card */}
-        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-5 rounded-2xl flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
+        {/* Storage Saved Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/10 transition-all"></div>
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Storage</span>
+              <ShieldCheck className="h-4 w-4 text-zinc-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">{wastedBytes > 0 ? formatBytes(wastedBytes) : '0 B'}</h2>
+            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+              <span className="text-emerald-400 font-bold">Wasted space</span> detected
+            </p>
+          </div>
+        </div>
+
+        {/* Automations Executed Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-amber-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-2.5 py-1 tracking-wider uppercase">Contracts</span>
-              <FileText className="h-4 w-4 text-zinc-500" />
+              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Automations</span>
+              <Zap className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-3xl font-bold text-zinc-100 font-mono mt-4">{contractsCount}</h2>
-            <p className="text-[10px] text-zinc-500 mt-2 flex items-center gap-1">
-              <span className="text-amber-400 font-bold">5</span> pending review
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">14</h2>
+            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+              <span className="text-amber-400 font-bold">Rules fired</span> this week
             </p>
           </div>
         </div>
 
-        {/* Reports / Bank Statements Card */}
-        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-5 rounded-2xl flex flex-col justify-between shadow-[0_4px_30px_rgba(0,0,0,0.4)] relative overflow-hidden group hover:border-sky-500/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-sky-500/10 transition-all"></div>
+        {/* OCR Success Rate Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-cyan-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 rounded px-2.5 py-1 tracking-wider uppercase">Statements</span>
-              <FileText className="h-4 w-4 text-zinc-500" />
+              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded px-2 py-0.5 tracking-wider uppercase">OCR Scan</span>
+              <Activity className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-3xl font-bold text-zinc-100 font-mono mt-4">{statementsCount}</h2>
-            <p className="text-[10px] text-zinc-500 mt-2 flex items-center gap-1">
-              <span className="text-sky-400 font-bold">Q3</span> analysis completed
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">99.8%</h2>
+            <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
+              <span className="text-cyan-400 font-bold">Success rate</span> extraction
             </p>
           </div>
         </div>

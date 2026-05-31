@@ -28,6 +28,14 @@ export interface FileRecord {
   extracted_metadata?: string;
 }
 
+export interface DocumentEntity {
+  id: string;
+  file_id: string;
+  key: string;
+  value: string;
+  confidence: number;
+}
+
 export interface DuplicateCluster {
   hash: string;
   file_count: number;

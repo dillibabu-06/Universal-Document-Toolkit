@@ -36,6 +36,15 @@ pub struct FileRecord {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentEntity {
+    pub id: String,
+    pub file_id: String,
+    pub key: String,
+    pub value: String,
+    pub confidence: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tag {
     pub id: String,
     pub name: String,
@@ -51,6 +60,57 @@ pub struct DocumentContent {
     pub extraction_confidence: f32,
     pub extracted_at: i64,
     pub structured_metadata: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Vault {
+    pub id: String,
+    pub workspace_id: String,
+    pub name: String,
+    pub salt: String, // Stored as hex string
+    pub created_at: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct VaultDocument {
+    pub id: String,
+    pub vault_id: String,
+    pub original_filename: String,
+    pub original_path: String,
+    pub encrypted_path: String,
+    pub added_at: i64,
+}
+
+// -----------------------------------------------------------------------------
+// Visual Workflow Studio Models
+// -----------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Workflow {
+    pub id: String,
+    pub workspace_id: String,
+    pub name: String,
+    pub enabled: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowNode {
+    pub id: String,
+    pub workflow_id: String,
+    pub node_type: String, // e.g., "trigger_folder", "action_ocr", "action_move"
+    pub position_x: f64,
+    pub position_y: f64,
+    pub config: serde_json::Value, // Node specific configuration like { "folder": "/path/to/watch" }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowEdge {
+    pub id: String,
+    pub workflow_id: String,
+    pub source_node: String,
+    pub target_node: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -105,3 +105,15 @@
   @apply bg-indigo-600/15 text-zinc-100 border-l-2 border-indigo-500;
 }
 
+
+/* Excel Previewer Styles */
+.excel-preview-content table { border-collapse: collapse; font-size: 11px; width: 100%; }
+.excel-preview-content td, .excel-preview-content th { border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px 8px; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Docx Previewer Styles */
+.docx-preview-content h1 { font-size: 2em; font-weight: bold; margin-bottom: 0.5em; }
+.docx-preview-content h2 { font-size: 1.5em; font-weight: bold; margin-bottom: 0.5em; }
+.docx-preview-content p { margin-bottom: 1em; line-height: 1.6; }
+.docx-preview-content table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+.docx-preview-content td, .docx-preview-content th { border: 1px solid #ccc; padding: 4px 8px; }
+

@@ -51,6 +51,7 @@ export default function ExplorerView({
   } = useWorkspaceStore();
 
   const parentRef = React.useRef<HTMLDivElement>(null);
+  const [isFetchingNextPage, setIsFetchingNextPage] = React.useState(false);
 
   const availableExtensions = Array.from(new Set(files.map(f => f.extension))).filter(Boolean);
 
@@ -66,6 +67,19 @@ export default function ExplorerView({
     estimateSize: () => 45,
     overscan: 10,
   });
+
+  React.useEffect(() => {
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    if (virtualItems.length === 0) return;
+
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (lastItem.index >= filteredFiles.length - 1 && !isFetchingNextPage) {
+      setIsFetchingNextPage(true);
+      useWorkspaceStore.getState()
+        .searchFiles(useWorkspaceStore.getState().searchQuery, true, files.length)
+        .then(() => setIsFetchingNextPage(false));
+    }
+  }, [rowVirtualizer.getVirtualItems(), isFetchingNextPage, filteredFiles.length, files.length]);
 
   const toggleRowSelection = (id: string) => {
     setSelectedRowIds(prev => 
@@ -86,8 +100,8 @@ export default function ExplorerView({
       
       {/* Category pills filtering */}
       <div className="flex flex-wrap gap-1.5 select-none items-center">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-2">
-          <Filter className="h-3 w-3" /> Filters
+        <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-wider mr-2">
+          <Filter className="h-4 w-4" /> Filters
         </div>
         
         <Button
@@ -145,7 +159,7 @@ export default function ExplorerView({
           onClick={() => setShowDuplicates(!showDuplicates)}
           className={`h-6 text-xs px-2 flex items-center gap-1 ${showDuplicates ? 'bg-amber-500 hover:bg-amber-600 text-black border-transparent' : 'text-zinc-500 hover:text-amber-500'}`}
         >
-          <Layers className="h-3 w-3" />
+          <Layers className="h-4 w-4" />
           Show Duplicates
           {duplicates.length > 0 && <span className="ml-1 bg-black/20 px-1 rounded-sm text-[9px]">{duplicates.length}</span>}
         </Button>
@@ -163,9 +177,9 @@ export default function ExplorerView({
                     <TableHead className="w-10 text-center px-4">
                       <button onClick={toggleSelectAll} className="text-zinc-500 hover:text-zinc-300">
                         {selectedRowIds.length === filteredFiles.length && filteredFiles.length > 0 ? (
-                          <Check className="h-3.5 w-3.5 text-indigo-400" />
+                          <Check className="h-4 w-4 text-indigo-400" />
                         ) : (
-                          <div className="h-3 w-3 border border-zinc-700 rounded-sm"></div>
+                          <div className="h-4 w-4 border border-zinc-700 rounded-sm"></div>
                         )}
                       </button>
                     </TableHead>
@@ -195,13 +209,13 @@ export default function ExplorerView({
                       >
                         <TableCell className="text-center" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleRowSelection(file.id); }}>
                           {selectedRowIds.includes(file.id) ? (
-                            <Check className="h-3.5 w-3.5 text-indigo-400 mx-auto" />
+                            <Check className="h-4 w-4 text-indigo-400 mx-auto" />
                           ) : (
-                            <div className="h-3 w-3 border border-zinc-700 rounded-sm mx-auto hover:border-zinc-500"></div>
+                            <div className="h-4 w-4 border border-zinc-700 rounded-sm mx-auto hover:border-zinc-500"></div>
                           )}
                         </TableCell>
-                        <TableCell className="flex items-center gap-2 min-w-0">
-                          <FileText className={`h-4 w-4 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
+                        <TableCell className="flex items-center gap-3 min-w-0">
+                          <FileText className={`h-5 w-5 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
                           <div className="min-w-0 flex-1">
                             <span className="block truncate font-semibold text-zinc-200">{file.filename}</span>
                             <span className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5">{file.path}</span>
@@ -248,7 +262,7 @@ export default function ExplorerView({
             <div className="col-span-5 flex flex-col min-h-0 bg-black/20 rounded-xl border border-white/5 overflow-y-auto animate-in slide-in-from-right-4 duration-300">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border-dark shrink-0">
                 <h2 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <SplitSquareHorizontal size={14} className="text-indigo-400" /> Inspector
+                  <SplitSquareHorizontal size={18} className="text-indigo-400" /> Inspector
                 </h2>
               </div>
               <div className="flex flex-col p-4 gap-6 min-h-0 flex-1 overflow-y-auto">

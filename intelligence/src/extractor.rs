@@ -1,47 +1,43 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use regex::Regex;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExtractedMetadata {
     pub fields: HashMap<String, String>,
 }
 
-#[derive(Serialize)]
-struct ExtractRequest<'a> {
-    category: &'a str,
-    text: &'a str,
-}
+/// Extract structured entities completely offline using Rust Regex heuristics
+pub fn extract_entities_offline(category: &str, text: &str) -> Vec<(String, String, f32)> {
+    let mut entities = Vec::new();
 
-/// Dynamic NLP-based structured metadata extractor calling FastAPI backend (Phase 9)
-pub fn extract_metadata(category: &str, text: &str) -> String {
-    // Truncate text to 50k chars to avoid blowing up JSON payloads
-    let truncated_text: String = text.chars().take(50000).collect();
-    
-    let req_data = ExtractRequest {
-        category,
-        text: &truncated_text,
-    };
-    
-    let client = reqwest::blocking::Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .unwrap_or_default();
-        
-    let res = client.post("http://localhost:8000/api/intelligence/extract")
-        .json(&req_data)
-        .send();
-        
-    if let Ok(response) = res {
-        if response.status().is_success() {
-            if let Ok(metadata) = response.json::<ExtractedMetadata>() {
-                return serde_json::to_string(&metadata).unwrap_or_else(|_| "{}".to_string());
+    if category == "Invoice" || category == "Receipt" {
+        // Extract Amount
+        if let Ok(re) = Regex::new(r"(?i)(?:Total|Amount Due|Balance)[\s:]*\$?([\d,]+\.\d{2})") {
+            if let Some(caps) = re.captures(text) {
+                if let Some(m) = caps.get(1) {
+                    entities.push(("Amount".to_string(), format!("${}", m.as_str()), 0.9));
+                }
             }
-        } else {
-            tracing::error!("Intelligence extraction failed: {}", response.status());
         }
-    } else if let Err(e) = res {
-        tracing::error!("Failed to contact intelligence backend: {}", e);
+        // Extract Vendor (heuristic: usually near the top, look for Vendor: or just assume first line for mock)
+        if let Ok(re) = Regex::new(r"(?i)Vendor:\s*(.+)") {
+            if let Some(caps) = re.captures(text) {
+                if let Some(m) = caps.get(1) {
+                    entities.push(("Vendor".to_string(), m.as_str().trim().to_string(), 0.85));
+                }
+            }
+        }
     }
-    
-    "{}".to_string()
+
+    if category == "Resume" {
+        // Extract Email
+        if let Ok(re) = Regex::new(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}") {
+            if let Some(mat) = re.find(text) {
+                entities.push(("Email".to_string(), mat.as_str().to_string(), 0.99));
+            }
+        }
+    }
+
+    entities
 }

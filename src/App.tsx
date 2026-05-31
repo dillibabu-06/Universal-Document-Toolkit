@@ -1,15 +1,17 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Search, Cpu, Plus, FileText, X,
+  Search, Cpu, Plus, X,
   RefreshCw, HardDrive, Keyboard,
-  CornerDownRight, ChevronDown, Eye, Terminal, FolderOpen
+  CornerDownRight, ChevronDown, Eye, FolderOpen, Bell
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { useWorkspaceStore } from './store/workspaceStore';
 import { FileRecord, RuleConditions, RuleAction } from './types';
 
+import CommandPalette from './components/CommandPalette';
 import Onboarding from './components/Onboarding';
 import Sidebar from './app/Sidebar';
+import ActivityCenter from './components/ActivityCenter';
 
 // Views Refactoring Subcomponents
 import DashboardView from './features/dashboard/DashboardView';
@@ -17,17 +19,18 @@ import ExplorerView from './features/explorer/ExplorerView';
 import DuplicatesView from './features/duplicates/DuplicatesView';
 import AutomationView from './features/automation/AutomationView';
 import LogsView from './features/automation/LogsView';
-import DiagnosticsView from './features/diagnostics/DiagnosticsView';
+import OcrStudioView from './features/ocr-studio/OcrStudioView';
 import SettingsView from './features/settings/SettingsView';
 import OfficeStudioView from './features/office-studio/OfficeStudioView';
+import WorkflowStudio from './features/workflows/WorkflowStudio';
 import PdfStudioView from './features/pdf-studio/PdfStudioView';
+import VaultView from './features/vault/VaultView';
 
 export default function App() {
   const {
     workspaces,
     activeWorkspaceId,
     files,
-    searchResults,
     indexingStatus,
     activeView,
     init,
@@ -38,6 +41,7 @@ export default function App() {
     createRule,
     selectFolder,
     searchFiles,
+    searchQuery,
     openFileLocation
   } = useWorkspaceStore();
 
@@ -59,8 +63,10 @@ export default function App() {
 
   // Command Palette UI State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [commandSearchTerm, setCommandSearchTerm] = useState('');
-  const [activeCommandIdx, setActiveCommandIdx] = useState(0);
+  // Command Palette & Search
+  
+  // Activity Center State
+  const [isActivityCenterOpen, setIsActivityCenterOpen] = useState(false);
 
   // Selected file inspector focus (Right Context Panel)
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
@@ -138,12 +144,12 @@ export default function App() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       if (activeWorkspaceId) {
-        searchFiles(commandSearchTerm);
+        searchFiles(searchQuery);
       }
     }, 150); // 150ms debounce threshold
 
     return () => clearTimeout(delayDebounceFn);
-  }, [commandSearchTerm, activeWorkspaceId]);
+  }, [searchQuery, activeWorkspaceId]);
 
   // Listen to keyboard shortcuts
   useEffect(() => {
@@ -165,7 +171,7 @@ export default function App() {
   }, [setActiveView]);
 
   useEffect(() => {
-    if (activeView === 'diagnostics') {
+    if (activeView === 'ocr') {
       import('@tauri-apps/api/tauri').then(({ invoke }) => {
         invoke('get_system_health').then((data: any) => setSystemHealth(data)).catch(console.error);
       });
@@ -265,14 +271,14 @@ export default function App() {
 
   const getCategoryColor = (cat: string) => {
     switch (cat) {
-      case 'Invoice': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'Receipt': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'Resume': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'Tax Document': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'Bank Statement': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'Contract': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      case 'College Notes': return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
-      default: return 'bg-zinc-800 text-zinc-300 border-zinc-700/50';
+      case 'Invoice': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'Receipt': return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'Resume': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      case 'Tax Document': return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      case 'Bank Statement': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      case 'Contract': return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
+      case 'College Notes': return 'bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20';
+      default: return 'bg-zinc-800/40 text-zinc-300 border-zinc-700/50';
     }
   };
 
@@ -370,6 +376,19 @@ export default function App() {
               <RefreshCw className="h-3 w-3 text-zinc-500" />
               <span>Crawl</span>
             </button>
+            
+            <div className="w-px h-4 bg-border-dark mx-1"></div>
+
+            <button 
+              onClick={() => setIsActivityCenterOpen(!isActivityCenterOpen)}
+              className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded relative transition-colors"
+              title="Activity Center"
+            >
+              <Bell className="h-4 w-4" />
+              {useWorkspaceStore.getState().logs.length === 0 && (
+                 <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse border border-zinc-950"></span>
+              )}
+            </button>
           </div>
         </header>
 
@@ -433,24 +452,27 @@ export default function App() {
           )}
 
           {/* ==================== VIEW 6: DIAGNOSTICS ==================== */}
-          {activeView === 'diagnostics' && (
-            <DiagnosticsView 
+          {activeView === 'ocr' && (
+            <OcrStudioView 
               systemHealth={systemHealth}
               exporting={exporting}
               handleExportDb={handleExportDb}
               handleExportRules={handleExportRules}
-              formatBytes={formatBytes}
             />
           )}
 
           {/* ==================== VIEW: PDF TOOLS ==================== */}
-          {activeView === 'pdf-tools' && <PdfStudioView />}
+          {activeView === 'pdf' && <PdfStudioView />}
 
           {/* ==================== VIEW: OFFICE WORKSPACE ==================== */}
-          {activeView === 'office-workspace' && <OfficeStudioView />}
+          {activeView === 'office' && <OfficeStudioView />}
 
           {/* ==================== VIEW: SETTINGS CENTER ==================== */}
           {activeView === 'settings' && <SettingsView />}
+
+          {/* Security Vault View */}
+          {activeView === 'vault' && <VaultView />}
+          {activeView === 'workflows' && <WorkflowStudio />}
 
         </div>
       </main>
@@ -1082,160 +1104,23 @@ export default function App() {
       )}
 
       {/* ==================== 4. COMMAND PALETTE ==================== */}
-      {isCommandPaletteOpen && (() => {
-        const operations = [
-          { id: 'scan', name: 'Crawl Workspace & Index Monitored Files', desc: 'Runs recursive directory scan extracting metadata', category: 'Action', action: () => { startIndexing(); setIsCommandPaletteOpen(false); } },
-          { id: 'view-dashboard', name: 'Switch to Workspace Inbox Suggestions', desc: 'Review deduplication and classification ideas', category: 'Navigation', action: () => { setActiveView('dashboard'); setIsCommandPaletteOpen(false); } },
-          { id: 'view-files', name: 'Switch to Document Explorer Table', desc: 'Perform high-density search and extensions filter', category: 'Navigation', action: () => { setActiveView('files'); setIsCommandPaletteOpen(false); } },
-          { id: 'view-duplicates', name: 'Switch to Duplicate Files Review', desc: 'Relocate wasted duplicate space safely to Recycle Bin', category: 'Navigation', action: () => { setActiveView('duplicates'); setIsCommandPaletteOpen(false); } },
-          { id: 'view-rules', name: 'Configure Watcher Folder Automations', desc: 'Setup custom MOVE, RENAME, or TAG action pathways', category: 'Navigation', action: () => { setActiveView('rules'); setIsCommandPaletteOpen(false); } },
-          { id: 'view-logs', name: 'Switch to Workflow Execution Logs', desc: 'Analyze system automation move triggers', category: 'Navigation', action: () => { setActiveView('logs'); setIsCommandPaletteOpen(false); } },
-          { id: 'add-workspace', name: 'Register Monitored Directory Workspace', desc: 'Configure fresh physical folder paths', category: 'Workspace', action: () => { setIsWorkspaceModalOpen(true); setIsCommandPaletteOpen(false); } },
-          { id: 'add-rule', name: 'Build Watcher Automation Rule', desc: 'Establish rule triggers on creation events', category: 'Automation', action: () => { setIsRuleModalOpen(true); setIsCommandPaletteOpen(false); } },
-        ];
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        setActiveView={setActiveView}
+        startIndexing={startIndexing}
+        setIsWorkspaceModalOpen={setIsWorkspaceModalOpen}
+        setIsRuleModalOpen={setIsRuleModalOpen}
+        setSelectedFile={setSelectedFile}
+        setInspectorTab={setInspectorTab}
+      />
 
-        const query = commandSearchTerm.trim().toLowerCase();
-        const filteredOps = operations.filter(op => 
-          op.name.toLowerCase().includes(query) || op.desc.toLowerCase().includes(query) || op.category.toLowerCase().includes(query)
-        );
-
-        const filteredFilesMatches = query.length > 0 
-          ? searchResults.slice(0, 6)
-          : [];
-
-        const mergedList = [
-          ...filteredOps.map(op => ({ type: 'op' as const, id: op.id, name: op.name, sub: op.desc, badge: op.category, run: op.action })),
-          ...filteredFilesMatches.map(f => ({ 
-            type: 'file' as const, 
-            id: f.id, 
-            name: f.filename, 
-            sub: f.snippet || f.path, 
-            badge: f.category, 
-            run: () => { 
-              setSelectedFile(f); 
-              setInspectorTab('preview');
-              setActiveView('files'); 
-              setIsCommandPaletteOpen(false); 
-            } 
-          }))
-        ];
-
-        const handlePaletteKeyDown = (e: React.KeyboardEvent) => {
-          if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            setActiveCommandIdx(prev => (prev + 1) % Math.max(mergedList.length, 1));
-          } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            setActiveCommandIdx(prev => (prev - 1 + mergedList.length) % Math.max(mergedList.length, 1));
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (mergedList[activeCommandIdx]) {
-              mergedList[activeCommandIdx].run();
-            }
-          } else if (e.key === 'Escape') {
-            e.preventDefault();
-            setIsCommandPaletteOpen(false);
-          }
-        };
-
-        const handleQueryChange = (val: string) => {
-          setCommandSearchTerm(val);
-          setActiveCommandIdx(0);
-        };
-
-        return (
-          <div 
-            className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-xs pt-24"
-            onClick={() => setIsCommandPaletteOpen(false)}
-          >
-            <div 
-              className="w-[36rem] bg-zinc-900 border border-border-dark rounded-lg shadow-2xl flex flex-col min-h-[300px] max-h-[460px] overflow-hidden"
-              onClick={e => e.stopPropagation()}
-              onKeyDown={handlePaletteKeyDown}
-            >
-              <div className="h-13 border-b border-border-dark flex items-center px-4 gap-2.5 shrink-0 bg-zinc-950/20">
-                <Search className="h-4 w-4 text-indigo-400 shrink-0" />
-                <input 
-                  autoFocus
-                  type="text" 
-                  placeholder="Type a command or fuzzy search cataloged files..."
-                  value={commandSearchTerm}
-                  onChange={e => handleQueryChange(e.target.value)}
-                  className="bg-transparent border-none outline-none py-2.5 text-[12.5px] text-zinc-200 placeholder-zinc-500 w-full focus:ring-0"
-                />
-                <kbd className="kbd-badge shrink-0 opacity-80">ESC</kbd>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-                {mergedList.length > 0 ? (
-                  <>
-                    {filteredOps.length > 0 && (
-                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2.5 py-1">Quick Actions & Commands</div>
-                    )}
-                    {mergedList.slice(0, filteredOps.length).map((item, idx) => {
-                      const isFocused = idx === activeCommandIdx;
-                      return (
-                        <div 
-                          key={item.id}
-                          onMouseEnter={() => setActiveCommandIdx(idx)}
-                          onClick={item.run}
-                          className={`cmd-palette-item ${isFocused ? 'cmd-palette-item-active' : 'hover:bg-zinc-800/40'}`}
-                        >
-                          <div className="min-w-0 flex items-center gap-2">
-                            <Terminal className={`h-3.5 w-3.5 ${isFocused ? 'text-indigo-400 animate-pulse' : 'text-zinc-500'}`} />
-                            <div className="min-w-0">
-                              <span className="text-[12px] font-semibold text-zinc-200 block truncate">{item.name}</span>
-                              <span className="text-[10px] text-zinc-500 block truncate font-medium mt-0.5">{item.sub}</span>
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded border border-border-dark/60 bg-zinc-950 text-zinc-400 uppercase">{item.badge}</span>
-                        </div>
-                      );
-                    })}
-
-                    {filteredFilesMatches.length > 0 && (
-                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider px-2.5 py-1 pt-2">Matching Documents</div>
-                    )}
-                    {mergedList.slice(filteredOps.length).map((item, idx) => {
-                      const realIdx = idx + filteredOps.length;
-                      const isFocused = realIdx === activeCommandIdx;
-                      return (
-                        <div 
-                          key={item.id}
-                          onMouseEnter={() => setActiveCommandIdx(realIdx)}
-                          onClick={item.run}
-                          className={`cmd-palette-item ${isFocused ? 'cmd-palette-item-active' : 'hover:bg-zinc-800/40'}`}
-                        >
-                          <div className="min-w-0 flex items-center gap-2">
-                            <FileText className={`h-3.5 w-3.5 ${isFocused ? 'text-indigo-400' : 'text-zinc-500'}`} />
-                            <div className="min-w-0">
-                              <span className="text-[12px] font-semibold text-zinc-250 block truncate">{item.name}</span>
-                              <span 
-                                className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5"
-                                dangerouslySetInnerHTML={{ __html: item.sub }}
-                              />
-                            </div>
-                          </div>
-                          <span className="text-[9px] font-mono font-semibold px-2 py-0.5 rounded border border-border-dark/60 bg-zinc-900 text-zinc-400 uppercase">{item.badge}</span>
-                        </div>
-                      );
-                    })}
-                  </>
-                ) : (
-                  <div className="p-8 text-center text-zinc-600 text-xs select-none">
-                    No action commands or document records found matching keywords.
-                  </div>
-                )}
-              </div>
-
-              <div className="h-10 border-t border-border-dark shrink-0 flex items-center justify-between px-4 bg-zinc-950/40 select-none text-[10px] font-mono text-zinc-500">
-                <span className="flex items-center gap-1.5">Use <kbd className="kbd-badge text-[8px] px-1 py-0.5">↑</kbd> <kbd className="kbd-badge text-[8px] px-1 py-0.5">↓</kbd> to traverse list</span>
-                <span>Press <kbd className="kbd-badge text-[8px] px-1 py-0.5">Enter</kbd> to execute</span>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {/* ==================== 5. ACTIVITY CENTER ==================== */}
+      <ActivityCenter 
+        isOpen={isActivityCenterOpen} 
+        onClose={() => setIsActivityCenterOpen(false)} 
+        logs={useWorkspaceStore.getState().logs} 
+      />
 
       {/* ==================== TOAST NOTIFICATION SYSTEM ==================== */}
       {toast && (

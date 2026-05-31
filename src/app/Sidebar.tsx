@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Cpu, Plus, ChevronDown, Layers, Search, Sliders, Activity, Terminal, FileText, ShieldCheck, Copy,
-  Settings, FileSignature, FileDown
+  Settings, FileSpreadsheet, Network
 } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -119,31 +119,45 @@ export default function Sidebar({
                     badge={rules.length > 0 ? rules.length : undefined}
                   />
                   <NavButton 
-                    icon={<FileDown className="h-4 w-4" />} 
-                    label="PDF Tools" 
-                    isActive={activeView === 'pdf-tools'} 
-                    onClick={() => setActiveView('pdf-tools')} 
+                    icon={<Network />} 
+                    label="Workflow Studio" 
+                    isActive={activeView === 'workflows'} 
+                    onClick={() => setActiveView('workflows')} 
                     shortcut="⌥5"
                   />
                   <NavButton 
-                    icon={<FileSignature className="h-4 w-4" />} 
-                    label="Office Workspace" 
-                    isActive={activeView === 'office-workspace'} 
-                    onClick={() => setActiveView('office-workspace')} 
+                    icon={<FileText />} 
+                    label="PDF Studio" 
+                    isActive={activeView === 'pdf'} 
+                    onClick={() => setActiveView('pdf')} 
                     shortcut="⌥6"
+                  />
+                  <NavButton 
+                    icon={<FileSpreadsheet />} 
+                    label="Office Studio" 
+                    isActive={activeView === 'office'} 
+                    onClick={() => setActiveView('office')} 
+                    shortcut="⌥7"
                   />
                   <NavButton 
                     icon={<Activity />} 
                     label="Logs" 
                     isActive={activeView === 'logs'} 
                     onClick={() => setActiveView('logs')} 
-                    shortcut="⌥7"
+                    shortcut="⌥8"
+                  />
+                  <NavButton 
+                    icon={<ShieldCheck />} 
+                    label="Security Vault" 
+                    isActive={activeView === 'vault'} 
+                    onClick={() => setActiveView('vault')} 
+                    shortcut="⌥9"
                   />
                   <NavButton 
                     icon={<Terminal />} 
-                    label="Diagnostics" 
-                    isActive={activeView === 'diagnostics'} 
-                    onClick={() => setActiveView('diagnostics')} 
+                    label="OCR Studio" 
+                    isActive={activeView === 'ocr'} 
+                    onClick={() => setActiveView('ocr')} 
                     shortcut="⌥8"
                   />
                   <NavButton 

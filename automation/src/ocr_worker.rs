@@ -83,7 +83,16 @@ async fn process_file(pool: &DbPool, file: &FileRecord) {
 
     // 2. Extract structured metadata if text is available (only for natively parsed docs)
     let structured_metadata = if !extracted_text.is_empty() {
-        Some(intelligence::extractor::extract_metadata(&file.category, &extracted_text))
+        let entities = intelligence::extractor::extract_entities_offline(&file.category, &extracted_text);
+        if !entities.is_empty() {
+            let mut map = std::collections::HashMap::new();
+            for (k, v, _) in entities {
+                map.insert(k, v);
+            }
+            serde_json::to_string(&map).ok()
+        } else {
+            None
+        }
     } else {
         None
     };

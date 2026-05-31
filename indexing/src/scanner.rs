@@ -130,124 +130,200 @@ impl IndexingService {
 
         let total_files = target_files.len();
 
-        for (idx, path) in target_files.iter().enumerate() {
-            if let Some(tx) = &progress_tx {
-                let _ = tx
-                    .send(IndexingStatus::Scanning {
-                        current: idx + 1,
-                        total: total_files,
-                        current_file: path
-                            .file_name()
-                            .and_then(|f| f.to_str())
-                            .unwrap_or("")
-                            .to_string(),
-                    })
-                    .await;
-            }
+        let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(4));
+        let (record_tx, mut record_rx) = tokio::sync::mpsc::channel::<(FileRecord, Vec<sdw_core::models::DocumentEntity>)>(1000);
+        
+        let pool_for_writer = self.pool.clone();
+        let writer_handle = tokio::task::spawn_blocking(move || {
+            let mut file_batch = Vec::with_capacity(1000);
+            let mut entity_batch = Vec::new();
 
-            let file_metadata = match path.metadata() {
-                Ok(m) => m,
-                Err(_) => continue, // Unreadable file or symlink mismatch
-            };
+            while let Some((record, entities)) = record_rx.blocking_recv() {
+                file_batch.push(record);
+                entity_batch.extend(entities);
 
-            let modified_time = file_metadata
-                .modified()
-                .unwrap_or(SystemTime::now())
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            let file_path_str = path.to_string_lossy().to_string();
-
-            // 2. Check if file is already indexed and unmodified
-            let already_indexed_and_unmodified = {
-                if let Ok(conn) = self.pool.get() {
-                    let file_repo = FileRepository::new(&conn);
-                    if let Ok(Some(existing_record)) = file_repo.get_by_path(&file_path_str) {
-                        existing_record.modified_at == modified_time
-                    } else {
-                        false
+                if file_batch.len() >= 1000 {
+                    if let Ok(conn) = pool_for_writer.get() {
+                        let repo = FileRepository::new(&conn);
+                        let _ = repo.upsert_batch(&file_batch);
+                        let _ = repo.insert_entities(&entity_batch);
                     }
-                } else {
-                    false
-                }
-            };
-
-            if already_indexed_and_unmodified {
-                continue;
-            }
-
-            // 3. File is new or changed - read, hash, and classify
-            let hash = match hash_file(path) {
-                Ok(h) => h,
-                Err(_) => continue, // Lock or file open error
-            };
-
-            let filename = path
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            let extension = path
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("")
-                .to_lowercase();
-
-            let created_time = file_metadata
-                .created()
-                .unwrap_or(SystemTime::now())
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-
-            // Extract text contents using intelligence crate based on file types
-            let mut text_content = String::new();
-            if extension == "pdf" {
-                if let Ok(extracted) = intelligence::pdf::extract_text(path) {
-                    text_content = extracted;
-                }
-            } else if extension == "png" || extension == "jpg" || extension == "jpeg" {
-                if let Ok(extracted) = intelligence::ocr::extract_text_from_image(path) {
-                    text_content = extracted;
+                    file_batch.clear();
+                    entity_batch.clear();
                 }
             }
-
-            // Run deep text classification, fallback to filename matches
-            let category = if !text_content.is_empty() {
-                if let Some(classified) = intelligence::classifier::classify_content(&text_content) {
-                    classified
-                } else {
-                    classify_file(&filename, &file_path_str)
+            if !file_batch.is_empty() {
+                if let Ok(conn) = pool_for_writer.get() {
+                    let repo = FileRepository::new(&conn);
+                    let _ = repo.upsert_batch(&file_batch);
+                    let _ = repo.insert_entities(&entity_batch);
                 }
-            } else {
-                classify_file(&filename, &file_path_str)
-            };
+            }
+        });
 
-            let record = FileRecord {
-                id: Uuid::new_v4().to_string(),
-                workspace_id: workspace.id.clone(),
-                filename,
-                extension,
-                path: file_path_str,
-                size: file_metadata.len(),
-                hash,
-                created_at: created_time,
-                modified_at: modified_time,
-                indexed_at: Utc::now().timestamp(),
-                category,
-                snippet: None,
-            };
+        let mut handles = Vec::new();
 
-            // Checkout connection for upsert, then drop it!
-            let conn = self
-                .pool
-                .get()
-                .map_err(|e| AppError::Database(format!("Checkout failed: {}", e)))?;
-            let file_repo = FileRepository::new(&conn);
-            file_repo.upsert(&record)?;
+        for (idx, path) in target_files.into_iter().enumerate() {
+            let permit = semaphore.clone().acquire_owned().await.unwrap();
+            let p_tx = progress_tx.clone();
+            let w_id = workspace.id.clone();
+            let pool = self.pool.clone();
+            let r_tx = record_tx.clone();
+
+            handles.push(tokio::spawn(async move {
+                let _permit = permit; // holds the concurrency limit
+
+                if let Some(tx) = &p_tx {
+                    let _ = tx
+                        .send(IndexingStatus::Scanning {
+                            current: idx + 1,
+                            total: total_files,
+                            current_file: path
+                                .file_name()
+                                .and_then(|f| f.to_str())
+                                .unwrap_or("")
+                                .to_string(),
+                        })
+                        .await;
+                }
+
+                let record_opt = tokio::task::spawn_blocking(move || {
+                    let file_metadata = match path.metadata() {
+                        Ok(m) => m,
+                        Err(_) => return None,
+                    };
+        
+                    let modified_time = file_metadata
+                        .modified()
+                        .unwrap_or(SystemTime::now())
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs() as i64;
+        
+                    let file_path_str = path.to_string_lossy().to_string();
+        
+                    let already_indexed_and_unmodified = {
+                        if let Ok(conn) = pool.get() {
+                            let file_repo = FileRepository::new(&conn);
+                            if let Ok(Some(existing_record)) = file_repo.get_by_path(&file_path_str) {
+                                existing_record.modified_at == modified_time
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    };
+        
+                    if already_indexed_and_unmodified {
+                        return None;
+                    }
+        
+                    let hash = match hash_file(&path) {
+                        Ok(h) => h,
+                        Err(_) => return None,
+                    };
+        
+                    let filename = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("Unknown")
+                        .to_string();
+        
+                    let extension = path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+        
+                    let created_time = file_metadata
+                        .created()
+                        .unwrap_or(SystemTime::now())
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_secs() as i64;
+        
+                    let mut text_content = String::new();
+                    if extension == "pdf" {
+                        if let Ok(extracted) = intelligence::pdf::extract_text(&path) {
+                            text_content = extracted;
+                        }
+                    } else if extension == "png" || extension == "jpg" || extension == "jpeg" {
+                        if let Ok(extracted) = intelligence::ocr::extract_text_from_image(&path) {
+                            text_content = extracted;
+                        }
+                    }
+        
+                    let category = if !text_content.is_empty() {
+                        if let Some(classified) = intelligence::classifier::classify_content(&text_content) {
+                            classified
+                        } else {
+                            classify_file(&filename, &file_path_str)
+                        }
+                    } else {
+                        classify_file(&filename, &file_path_str)
+                    };
+        
+                    let mut entities = Vec::new();
+                    if !text_content.is_empty() {
+                        let extracted = intelligence::extractor::extract_entities_offline(&category, &text_content);
+                        let file_id_for_entities = Uuid::new_v4().to_string(); // we'll use this same UUID for the FileRecord below
+                        for (key, val, conf) in extracted {
+                            entities.push(sdw_core::models::DocumentEntity {
+                                id: Uuid::new_v4().to_string(),
+                                file_id: file_id_for_entities.clone(),
+                                key,
+                                value: val,
+                                confidence: conf,
+                            });
+                        }
+                        
+                        Some((FileRecord {
+                            id: file_id_for_entities,
+                            workspace_id: w_id,
+                            filename,
+                            extension,
+                            path: file_path_str,
+                            size: file_metadata.len(),
+                            hash,
+                            created_at: created_time,
+                            modified_at: modified_time,
+                            indexed_at: Utc::now().timestamp(),
+                            category,
+                            snippet: None,
+                        }, entities))
+                    } else {
+                        Some((FileRecord {
+                            id: Uuid::new_v4().to_string(),
+                            workspace_id: w_id,
+                            filename,
+                            extension,
+                            path: file_path_str,
+                            size: file_metadata.len(),
+                            hash,
+                            created_at: created_time,
+                            modified_at: modified_time,
+                            indexed_at: Utc::now().timestamp(),
+                            category,
+                            snippet: None,
+                        }, vec![]))
+                    }
+                }).await.unwrap_or(None);
+
+                if let Some(record_tuple) = record_opt {
+                    let _ = r_tx.send(record_tuple).await;
+                }
+            }));
         }
+
+        // Drop our sender so writer knows we are done
+        drop(record_tx);
+
+        for handle in handles {
+            let _ = handle.await;
+        }
+
+        let _ = writer_handle.await;
 
         if let Some(tx) = &progress_tx {
             let _ = tx

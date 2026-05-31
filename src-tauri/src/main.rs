@@ -38,7 +38,8 @@ fn main() {
                 automation::ocr_worker::start_ocr_worker(pool_clone).await;
             });
 
-            let app_state = AppState::new(pool, db_path);
+            let plugin_dir = app_dir.join("plugins");
+            let app_state = AppState::new(pool, db_path, plugin_dir);
             app.manage(app_state);
 
             Ok(())
@@ -50,11 +51,22 @@ fn main() {
             list_files,
             search_files,
             list_duplicates,
+            get_file_entities,
+            list_installed_plugins,
+            execute_plugin,
             trigger_indexing,
             list_rules,
             create_rule,
             delete_rule,
             list_automation_logs,
+            create_vault,
+            list_vaults,
+            lock_vault,
+            unlock_vault,
+            check_vault_unlocked,
+            list_vault_documents,
+            add_to_vault,
+            view_vault_document,
             list_tags,
             create_tag,
             select_folder,
@@ -65,7 +77,15 @@ fn main() {
             export_database,
             export_rules,
             get_document_metadata,
-            save_document_metadata
+            save_document_metadata,
+            save_workflow,
+            list_workflows,
+            get_workflow,
+            delete_workflow,
+            export_workspace,
+            import_workspace,
+            list_marketplace_plugins,
+            install_plugin_from_marketplace
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

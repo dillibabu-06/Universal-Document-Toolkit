@@ -173,11 +173,11 @@ interface WorkspaceStore {
   logs: AutomationLog[];
   tags: Tag[];
   indexingStatus: IndexingStatus;
-  activeView: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics' | 'pdf-tools' | 'office-workspace' | 'settings';
+  activeView: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'ocr' | 'pdf' | 'office' | 'settings' | 'vault' | 'workflows';
   searchQuery: string; // Tracks last search query for command palette
 
   // Navigation & Base Actions
-  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'diagnostics' | 'pdf-tools' | 'office-workspace' | 'settings') => void;
+  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'ocr' | 'pdf' | 'office' | 'settings' | 'vault' | 'workflows') => void;
   setActiveWorkspace: (id: string | null) => void;
   init: () => Promise<void>;
   
@@ -190,7 +190,7 @@ interface WorkspaceStore {
   setIndexingStatus: (status: IndexingStatus) => void;
   
   // File search
-  searchFiles: (query: string) => Promise<void>;
+  searchFiles: (query: string, append?: boolean, offset?: number) => Promise<void>;
   
   // File operations
   trashFile: (path: string) => Promise<boolean>;
@@ -225,7 +225,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   setActiveWorkspace: (id) => {
     set({ activeWorkspaceId: id, indexingStatus: { type: 'Idle' } });
     if (id) {
-      get().searchFiles('');
+      get().searchFiles('', false, 0);
       runIPC<DuplicateCluster[]>('list_duplicates', { workspaceId: id }).then(dups => set({ duplicates: dups }));
       runIPC<Rule[]>('list_rules', { workspaceId: id }).then(rules => set({ rules }));
       runIPC<AutomationLog[]>('list_automation_logs', { limit: 20 }).then(logs => set({ logs }));
@@ -291,7 +291,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
           // Refresh documents and duplicates lists when scan completes
           if (status.type === 'Finished') {
-            get().searchFiles('');
+            get().searchFiles('', false, 0);
             runIPC<DuplicateCluster[]>('list_duplicates', { workspaceId: activeId }).then(dups => set({ duplicates: dups }));
             unlisten();
           }
@@ -303,7 +303,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         }, 1500);
         setTimeout(() => {
           set({ indexingStatus: { type: 'Finished', files_indexed: 10 } });
-          get().searchFiles('');
+          get().searchFiles('', false, 0);
         }, 3000);
       }
     } catch (e) {
@@ -313,18 +313,21 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   setIndexingStatus: (indexingStatus) => set({ indexingStatus }),
 
-  searchFiles: async (query) => {
+  searchFiles: async (query, append = false, offset = 0) => {
     const activeId = get().activeWorkspaceId;
     if (!activeId) return;
     try {
-      const files = await runIPC<FileRecord[]>('search_files', { workspaceId: activeId, query });
-      if (query.trim().length > 0) {
-        // Non-empty query: update both the main files list AND searchResults for the command palette
-        set({ files, searchResults: files, searchQuery: query });
-      } else {
-        // Empty query: refresh main file list, clear search results
-        set({ files, searchResults: [], searchQuery: '' });
-      }
+      const limit = 100;
+      const files = await runIPC<FileRecord[]>('search_files', { workspaceId: activeId, query, limit, offset });
+      
+      set(state => {
+        const newFiles = append ? [...state.files, ...files] : files;
+        if (query.trim().length > 0) {
+          return { files: newFiles, searchResults: newFiles, searchQuery: query };
+        } else {
+          return { files: newFiles, searchResults: [], searchQuery: '' };
+        }
+      });
     } catch (e) {
       console.error("Search files failed", e);
     }
@@ -341,7 +344,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         })).filter(cluster => cluster.files.length > 1)
       }));
       // Refresh file list
-      get().searchFiles(get().searchQuery);
+      get().searchFiles(get().searchQuery, false, 0);
       return true;
     } catch (e) {
       console.error("Trash file failed", e);

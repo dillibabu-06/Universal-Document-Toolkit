@@ -1,0 +1,10 @@
+[package]
+name = "plugins"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+sdw_core = { version = "0.1.0", path = "../core" }
+serde = "1.0.228"
+serde_json = "1.0.150"
+wasmtime = "45.0.0"
