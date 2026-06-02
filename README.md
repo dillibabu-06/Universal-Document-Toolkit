@@ -12,6 +12,11 @@ The application indexes files stored on local drives, extracts searchable conten
 
 All processing is performed locally on the user's machine.
 
+## 📥 Download
+
+Pre-compiled installers are available for all major operating systems.
+👉 **[Download the latest release for macOS, Windows, and Linux](https://github.com/dillibabu-06/Universal-Document-Toolkit/releases/latest)**
+
 ## Features
 
 ### Document Explorer
