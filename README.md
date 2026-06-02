@@ -216,10 +216,14 @@ npm run tauri build
 </p>
 
 ### Explorer
-*(Screenshot pending)*
+<p align="center">
+  <img src="docs/assets/explorer.png" alt="Explorer" width="800">
+</p>
 
 ### Knowledge Graph
-*(Screenshot pending)*
+<p align="center">
+  <img src="docs/assets/knowledge_graph.png" alt="Knowledge Graph" width="800">
+</p>
 
 ### Security Vault
 <p align="center">
@@ -227,7 +231,9 @@ npm run tauri build
 </p>
 
 ### PDF Studio
-*(Screenshot pending)*
+<p align="center">
+  <img src="docs/assets/pdf_studio.png" alt="PDF Studio" width="800">
+</p>
 
 ## Current Status
 
