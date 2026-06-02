@@ -1,45 +1,56 @@
 # Universal Toolkit OS
 
-**Universal Toolkit OS** is a highly performant, local-first Document Operating System designed for enterprise-scale folder indexing, processing, and automation. It unifies a Rust-based desktop core with Python-driven extraction engines and an interactive React UI.
+**Universal Toolkit OS** is a premium, local-first Document Operating System designed to replace scattered file managers with a highly optimized, beautifully crafted digital workspace. Built for maximum privacy, it combines a blisteringly fast Rust core with an intuitive glassmorphic React interface to manage, secure, and visualize your documents.
+
+<p align="center">
+  <img src="docs/assets/dashboard.png" alt="Universal Toolkit OS Dashboard" width="800">
+</p>
 
 ---
 
 ## 🌟 Key Features
 
-### 🔍 Search Intelligence & Fast Indexing
-- **Semantic FTS5 Database**: Instantly query hundreds of thousands of files with real-time Full-Text Search backed by an optimized SQLite database.
-- **Natural Language Parsing**: Use intent-based queries like `invoices over $500` or `contracts from Acme` via a built-in NLP query parser.
-- **Recursive Rayon Crawlers**: Lightning-fast, multi-threaded directory indexing with live file-watching to instantly log new document events.
+### 📁 Unified Explorer & Smart Organization
+- **Blazing Fast Indexing:** Powered by Rust and SQLite FTS5, navigate and search hundreds of thousands of files with zero latency.
+- **Visual File Management:** Beautifully categorized documents with instant previews for PDFs, Office files, and media.
+- **Document Timeline:** View the complete chronological history of your documents, including creation, modification, and vault movements.
 
-### 🧠 Deep Extraction (OCR & NLP)
-- **Delegated Python Pipeline**: Heavy lifting (Tesseract OCR, PyPDF extractions) is safely pushed to non-blocking Python process queues.
-- **Smart Entity Extraction**: Automatically extracts Metadata like Vendor Names, Invoice Amounts, Skills (from Resumes), and Emails.
+### 🔍 Search Intelligence
+- **Offline Semantic Search:** Instantly locate files across your entire machine using high-performance Full-Text Search.
+- **Knowledge Graph:** Discover hidden connections between files through relationship mapping and visual network analysis.
 
-### ⚙️ Visual Automation Studio
-- **DAG Workflow Engine**: Build Zapier-style automations locally. Visually string together tasks: e.g., `PDF Scanned -> OCR -> Extract Amount -> Rename -> Move to Finance Folder`.
-- **Topological Execution**: Evaluates complex workflows sequentially with execution logs and rollback mechanisms.
+### 🛡️ Enterprise-Grade Security Vault
 
-### 🧩 Plugin Marketplace (WASM)
-- Extensible at its core. Browse, install, and execute third-party WASM plugins securely inside the application sandbox (e.g., Notion Exporters, GitHub Archivers).
+<p align="center">
+  <img src="docs/assets/vault.png" alt="Security Vault" width="600">
+</p>
 
-### 🔒 Enterprise Security Vault
-- **AES-256-GCM Encryption**: Secure sensitive files inside password-protected, encrypted local vaults.
-- **Secure Previews**: Memory-safe temporary decryption mechanisms prevent sensitive files from remaining exposed on the local filesystem.
+- **Zero-Knowledge Encryption:** Secure sensitive documents (e.g., tax forms, personal IDs, financial statements) using AES-256-GCM encryption.
+- **In-Memory Decryption:** Files remain fully encrypted on disk. Viewing securely decrypts content straight to memory for maximum privacy.
+- **Vault Export & Backup:** Export your entire vault as a secure ZIP archive for cold storage.
 
-### 💾 Backup & Recovery
-- Complete data portability. Export `.sdwbak` archives containing your entire settings, FTS database, workflows, and plugins to ensure you never lose a workspace config.
+### 📊 Reporting & Analytics Center
+- **Workspace Insights:** Visualize your storage distribution, document categories, and disk health in a sleek analytics dashboard.
+- **One-Click Exports:** Export workspace metrics and file listings directly to CSV, XLSX, and PDF formats for compliance and auditing.
+
+### 🛠️ Built-in Productivity Studios
+- **PDF Studio:** High-performance, offline PDF viewer directly integrated into the dashboard.
+- **Office Studio:** Preview Word, Excel, and CSV files natively without requiring external heavy applications.
+- **Media Studio:** Gallery-style image visualization and management.
+
+### 💾 Complete Data Portability
+- **Backup & Restore:** Generate encrypted `.sdwbak` archives containing your entire settings, database, and configurations. Never lose a workspace environment.
+- **Local-First Design:** No cloud requirements, no subscriptions, and zero telemetry. Your data never leaves your device.
 
 ---
 
 ## 🏛️ Architecture Overview
 
-The monorepo operates on a clean separation of concerns to maximize responsiveness:
+The application is built on a high-performance stack prioritizing speed, security, and aesthetics:
 
-1. **`src-tauri/` (Desktop Window & Commands)**: Rust-based Tauri backend executing commands, orchestrating the file-watchers, and managing app state.
-2. **`backend/` (FastAPI Sidecar)**: Dedicated Python engine specifically running background OCR pools, Excel parsing, and PDF layout analysis.
-3. **`database/` (SQLite Unified Storage)**: All Rust threads and Python queues read/write to a unified `smart_workflow.db` managed by Refinery migrations.
-4. **`automation/` (Workflows & Events)**: Monitors file changes (`Notify`) and evaluates automation graphs.
-5. **`src/` (React UI)**: A premium glassmorphic React 18 interface heavily utilizing `@tanstack/react-virtual` to smoothly render 100,000+ files at 60FPS.
+1. **`src-tauri/` (Desktop Window & Commands)**: A lightweight Rust backend powered by Tauri for executing core system commands, cryptographic operations, and thread orchestration.
+2. **`database/` (SQLite Unified Storage)**: An optimized SQLite layer handling FTS5 indexes, timelines, versioning, and document relationship graphs.
+3. **`src/` (React UI)**: A highly polished React 18 interface utilizing TailwindCSS and `@tanstack/react-virtual` to smoothly render massive file directories at 60FPS.
 
 ---
 
@@ -48,9 +59,8 @@ The monorepo operates on a clean separation of concerns to maximize responsivene
 ### Prerequisites
 - [Node.js](https://nodejs.org) (v18+)
 - [Rust](https://rustup.rs/) (1.70+)
-- [Python](https://python.org) (3.10+) with `uvicorn` and `fastapi`.
 
-### Installation
+### Installation & Build
 
 1. **Clone the repository:**
    ```bash
@@ -63,15 +73,21 @@ The monorepo operates on a clean separation of concerns to maximize responsivene
    npm install
    ```
 
-3. **Run the development server:**
+3. **Run the local development server:**
    ```bash
    npm run tauri dev
    ```
 
+4. **Build for Production (Installers):**
+   ```bash
+   npm run tauri build
+   ```
+   *(This will generate the `.dmg`, `.app`, `.msi`, or `.AppImage` files in the `target/release/bundle/` directory depending on your OS).*
+
 ---
 
 ## 🤝 Contributing
-As this project is in an active testing phase, pull requests and issues are strictly monitored. Stay tuned for further documentation regarding the WASM plugin SDK!
+Universal Toolkit OS is a polished release. Pull requests, bug reports, and issues are strictly monitored. Feel free to open a discussion or report issues in the GitHub tracker!
 
 ## 📜 License
 MIT License

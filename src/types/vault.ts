@@ -12,5 +12,6 @@ export interface VaultDocument {
   original_filename: string;
   original_path: string;
   encrypted_path: string;
+  size?: number;
   added_at: number;
 }

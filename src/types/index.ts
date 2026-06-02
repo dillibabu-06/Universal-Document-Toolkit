@@ -102,3 +102,38 @@ export type IndexingStatus =
   | { type: 'Scanning'; current: number; total: number; current_file: string }
   | { type: 'Finished'; files_indexed: number }
   | { type: 'Failed'; payload: string };
+
+
+export interface DocumentTimelineEvent {
+  id: string;
+  file_id: string;
+  event_type: 'Created' | 'OcrScan' | 'WorkflowRun' | 'LinkCreated' | 'LinkDeleted';
+  title: string;
+  description: string | null;
+  created_at: number;
+}
+
+export interface DocumentVersion {
+  id: string;
+  file_id: string;
+  version_number: number;
+  filename: string;
+  comment: string | null;
+  backup_path: string;
+  hash: string;
+  created_at: number;
+}
+
+export interface ReportingStats {
+  total_files: number;
+  total_size_bytes: number;
+  duplicate_count: number;
+  wasted_size_bytes: number;
+  category_distribution: Record<string, number>;
+  automation_runs_count?: number;
+  automation_success_rate?: number;
+  automation_failures_count?: number;
+  total_vaults: number;
+  vaulted_docs_count: number;
+}
+

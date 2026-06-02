@@ -1,10 +1,12 @@
 import React from 'react';
-import { Filter, Layers, Search, Check, FileText, SplitSquareHorizontal } from 'lucide-react';
+import { Filter, Layers, Search, Check, FileText, SplitSquareHorizontal, List, Share2 } from 'lucide-react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { FileRecord } from '../../types';
 import PreviewEngine from './PreviewEngine';
 import MetadataInspector from './MetadataInspector';
+import GraphViewer from './GraphViewer';
+import FolderTree from './FolderTree';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/Table';
 import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -49,6 +51,9 @@ export default function ExplorerView({
     duplicates,
     trashFile
   } = useWorkspaceStore();
+
+  const [viewMode, setViewMode] = React.useState<'list' | 'graph'>('list');
+  const [inspectorTab, setInspectorTab] = React.useState<'preview' | 'attributes' | 'timeline' | 'relations' | 'versions'>('preview');
 
   const parentRef = React.useRef<HTMLDivElement>(null);
   const [isFetchingNextPage, setIsFetchingNextPage] = React.useState(false);
@@ -97,6 +102,8 @@ export default function ExplorerView({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      
+
       
       {/* Category pills filtering */}
       <div className="flex flex-wrap gap-1.5 select-none items-center">
@@ -163,113 +170,176 @@ export default function ExplorerView({
           Show Duplicates
           {duplicates.length > 0 && <span className="ml-1 bg-black/20 px-1 rounded-sm text-[9px]">{duplicates.length}</span>}
         </Button>
+
+        {!showDuplicates && (
+          <>
+            <div className="w-[1px] h-4 bg-zinc-800 mx-2"></div>
+            <div className="flex bg-zinc-950/80 border border-zinc-850 p-0.5 rounded-lg shrink-0 select-none animate-fadeIn">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`h-5 text-[10px] px-2 rounded-md font-bold transition-all flex items-center gap-1 ${
+                  viewMode === 'list' 
+                    ? 'bg-zinc-800 text-zinc-150 shadow-sm font-extrabold' 
+                    : 'text-zinc-500 hover:text-zinc-350 font-medium'
+                }`}
+                title="List View"
+              >
+                <List size={11} /> List
+              </button>
+              <button
+                onClick={() => setViewMode('graph')}
+                className={`h-5 text-[10px] px-2 rounded-md font-bold transition-all flex items-center gap-1 ${
+                  viewMode === 'graph' 
+                    ? 'bg-indigo-650 text-white shadow-sm font-extrabold border border-indigo-500/10' 
+                    : 'text-zinc-500 hover:text-zinc-350 font-medium'
+                }`}
+                title="Network Graph"
+              >
+                <Share2 size={11} /> Graph
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Table Data stream or Duplicates View */}
       {!showDuplicates ? (
         <div className="grid grid-cols-12 gap-6 h-[calc(100vh-280px)]">
-          {/* Main Table View */}
-          <div className={`${selectedFile ? 'col-span-7' : 'col-span-12'} flex flex-col min-h-0 transition-all duration-300`}>
-            <div ref={parentRef} className="matte-panel overflow-y-auto flex-1">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10 text-center px-4">
-                      <button onClick={toggleSelectAll} className="text-zinc-500 hover:text-zinc-300">
-                        {selectedRowIds.length === filteredFiles.length && filteredFiles.length > 0 ? (
-                          <Check className="h-4 w-4 text-indigo-400" />
-                        ) : (
-                          <div className="h-4 w-4 border border-zinc-700 rounded-sm"></div>
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead>Document Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Workflow Status</TableHead>
-                    <TableHead>Size</TableHead>
-                    <TableHead>Modified Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rowVirtualizer.getVirtualItems().length > 0 && (
-                    <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
-                      <td colSpan={6} aria-hidden="true" />
-                    </tr>
-                  )}
-                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const file = filteredFiles[virtualRow.index];
-                    const isSelected = selectedFile?.id === file.id;
-                    return (
-                      <TableRow 
-                        key={file.id} 
-                        onClick={() => setSelectedFile(file)}
-                        data-state={isSelected ? "selected" : undefined}
-                        className="cursor-pointer"
-                        style={{ height: `${virtualRow.size}px` }}
-                      >
-                        <TableCell className="text-center" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleRowSelection(file.id); }}>
-                          {selectedRowIds.includes(file.id) ? (
-                            <Check className="h-4 w-4 text-indigo-400 mx-auto" />
-                          ) : (
-                            <div className="h-4 w-4 border border-zinc-700 rounded-sm mx-auto hover:border-zinc-500"></div>
-                          )}
-                        </TableCell>
-                        <TableCell className="flex items-center gap-3 min-w-0">
-                          <FileText className={`h-5 w-5 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
-                          <div className="min-w-0 flex-1">
-                            <span className="block truncate font-semibold text-zinc-200">{file.filename}</span>
-                            <span className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5">{file.path}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getCategoryColor(file.category)}`}>
-                            {file.category}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={getStatusBadge(getWorkflowStatus(file))}>
-                            {getWorkflowStatus(file)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-zinc-400">{formatBytes(file.size)}</TableCell>
-                        <TableCell className="text-zinc-400">{formatDate(file.modified_at)}</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {rowVirtualizer.getVirtualItems().length > 0 && (
-                    <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px` }}>
-                      <td colSpan={6} aria-hidden="true" />
-                    </tr>
-                  )}
-                  {filteredFiles.length === 0 && (
+          
+          {/* Left Pane: Folder Tree */}
+          <div className="col-span-2 flex flex-col min-h-0">
+             <FolderTree />
+          </div>
+
+          {/* Center Pane: Main Table or Graph View */}
+          <div className={`${selectedFile ? 'col-span-6' : 'col-span-10'} flex flex-col min-h-0 transition-all duration-300`}>
+            {viewMode === 'list' ? (
+              <div ref={parentRef} className="matte-panel overflow-y-auto flex-1">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6}>
-                        <EmptyState 
-                          icon={<Search className="h-8 w-8" />}
-                          title="No Documents Match Filter"
-                          description="Try clearing active category selections or query search keywords."
-                        />
-                      </TableCell>
+                      <TableHead className="w-10 text-center px-4">
+                        <button onClick={toggleSelectAll} className="text-zinc-500 hover:text-zinc-300">
+                          {selectedRowIds.length === filteredFiles.length && filteredFiles.length > 0 ? (
+                            <Check className="h-4 w-4 text-indigo-400" />
+                          ) : (
+                            <div className="h-4 w-4 border border-zinc-700 rounded-sm"></div>
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead>Document Name</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Workflow Status</TableHead>
+                      <TableHead>Size</TableHead>
+                      <TableHead>Modified Date</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {rowVirtualizer.getVirtualItems().length > 0 && (
+                      <tr style={{ height: `${rowVirtualizer.getVirtualItems()[0].start}px` }}>
+                        <td colSpan={6} aria-hidden="true" />
+                      </tr>
+                    )}
+                    {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                      const file = filteredFiles[virtualRow.index];
+                      const isSelected = selectedFile?.id === file.id;
+                      return (
+                        <TableRow 
+                          key={file.id} 
+                          onClick={() => setSelectedFile(file)}
+                          data-state={isSelected ? "selected" : undefined}
+                          className="cursor-pointer"
+                          style={{ height: `${virtualRow.size}px` }}
+                        >
+                          <TableCell className="text-center" onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleRowSelection(file.id); }}>
+                            {selectedRowIds.includes(file.id) ? (
+                              <Check className="h-4 w-4 text-indigo-400 mx-auto" />
+                            ) : (
+                              <div className="h-4 w-4 border border-zinc-700 rounded-sm mx-auto hover:border-zinc-500"></div>
+                            )}
+                          </TableCell>
+                          <TableCell className="flex items-center gap-3 min-w-0">
+                            <FileText className={`h-5 w-5 shrink-0 ${isSelected ? 'text-indigo-400' : 'text-zinc-500'}`} />
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate font-semibold text-zinc-200">{file.filename}</span>
+                              <span className="text-[10px] text-zinc-500 block truncate font-mono mt-0.5">{file.path}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${getCategoryColor(file.category)}`}>
+                              {file.category}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className={getStatusBadge(getWorkflowStatus(file))}>
+                              {getWorkflowStatus(file)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-zinc-400">{formatBytes(file.size)}</TableCell>
+                          <TableCell className="text-zinc-400">{formatDate(file.modified_at)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {rowVirtualizer.getVirtualItems().length > 0 && (
+                      <tr style={{ height: `${rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1].end}px` }}>
+                        <td colSpan={6} aria-hidden="true" />
+                      </tr>
+                    )}
+                    {filteredFiles.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6}>
+                          <EmptyState 
+                            icon={<Search className="h-8 w-8" />}
+                            title="No Documents Match Filter"
+                            description="Try clearing active category selections or query search keywords."
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <GraphViewer selectedFile={selectedFile} setSelectedFile={setSelectedFile} />
+            )}
           </div>
 
           {/* Right Inspector Pane */}
           {selectedFile && (
-            <div className="col-span-5 flex flex-col min-h-0 bg-black/20 rounded-xl border border-white/5 overflow-y-auto animate-in slide-in-from-right-4 duration-300">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border-dark shrink-0">
-                <h2 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5 uppercase tracking-wider">
-                  <SplitSquareHorizontal size={18} className="text-indigo-400" /> Inspector
-                </h2>
-              </div>
-              <div className="flex flex-col p-4 gap-6 min-h-0 flex-1 overflow-y-auto">
-                <div className="h-[250px] shrink-0">
-                  <PreviewEngine file={selectedFile} />
+            <div className="col-span-4 flex flex-col min-h-0 bg-black/20 rounded-xl border border-white/5 overflow-hidden animate-in slide-in-from-right-4 duration-300">
+              <div className="flex flex-col border-b border-border-dark shrink-0 bg-zinc-950">
+                <div className="flex items-center px-4 py-3 border-b border-border-dark">
+                  <h2 className="text-xs font-bold text-zinc-300 flex items-center gap-1.5 uppercase tracking-wider">
+                    <SplitSquareHorizontal size={18} className="text-indigo-400" /> Inspector
+                  </h2>
                 </div>
-                <MetadataInspector file={selectedFile} formatBytes={formatBytes} formatDate={formatDate} />
+                <div className="flex px-2 pt-2 gap-1 overflow-x-auto no-scrollbar">
+                  {['preview', 'attributes', 'timeline', 'relations', 'versions'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setInspectorTab(tab as any)}
+                      className={`text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-t-lg transition-colors border-b-2 ${
+                        inspectorTab === tab
+                          ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10'
+                          : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col min-h-0 flex-1 overflow-y-auto">
+                {inspectorTab === 'preview' && (
+                  <div className="h-full w-full p-4">
+                    <PreviewEngine file={selectedFile} />
+                  </div>
+                )}
+                {inspectorTab !== 'preview' && (
+                  <div className="p-4">
+                    <MetadataInspector file={selectedFile} formatBytes={formatBytes} formatDate={formatDate} activeTab={inspectorTab as any} />
+                  </div>
+                )}
               </div>
             </div>
           )}

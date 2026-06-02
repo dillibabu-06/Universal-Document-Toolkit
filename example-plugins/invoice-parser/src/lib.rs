@@ -1,5 +1,5 @@
 use std::mem;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct EntityResult {
@@ -17,12 +17,15 @@ pub extern "C" fn alloc(size: usize) -> *mut u8 {
     ptr
 }
 
+/// # Safety
+/// This function is unsafe because it frees raw pointers.
 #[no_mangle]
 pub unsafe extern "C" fn dealloc(ptr: *mut u8, size: usize) {
     let _ = Vec::from_raw_parts(ptr, 0, size);
 }
 
 #[no_mangle]
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub extern "C" fn process(ptr: *mut u8, len: usize) -> u64 {
     let input_bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
     let input_str = std::str::from_utf8(input_bytes).unwrap_or("");

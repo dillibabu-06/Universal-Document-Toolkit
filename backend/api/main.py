@@ -5,7 +5,7 @@ from loguru import logger
 from backend.config.settings import settings
 from backend.core.logger import setup_logging
 from backend.core.validation import run_startup_checks
-from backend.api.routers import search, documents, pdf_tools, office_tools, automation, settings, intelligence
+from backend.api.routers import search, documents, pdf_tools, office_tools, settings as settings_router, image_tools
 from backend.plugins.manager import PluginManager
 
 # Setup logging and validations
@@ -24,8 +24,8 @@ app = FastAPI(
 # Allow React dev server to communicate with FastAPI
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173"], 
-    allow_credentials=True,
+    allow_origins=["*"], 
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -33,10 +33,9 @@ app.add_middleware(
 app.include_router(search.router)
 app.include_router(documents.router)
 app.include_router(pdf_tools.router)
+app.include_router(image_tools.router)
 app.include_router(office_tools.router)
-app.include_router(automation.router)
-app.include_router(settings.router)
-app.include_router(intelligence.router)
+app.include_router(settings_router.router)
 
 # Mount plugin routers dynamically
 for plugin in PluginManager.get_plugins():
@@ -45,8 +44,6 @@ for plugin in PluginManager.get_plugins():
         app.include_router(router)
         logger.info(f"Mounted API router for plugin: {plugin.name}")
 
-from backend.automation.manager import WatcherManager
-
 @app.on_event("startup")
 async def startup_event():
     logger.info("Local FastAPI server started successfully.")
@@ -54,15 +51,10 @@ async def startup_event():
     # Initialize FTS5 search database (async)
     from backend.search.database import DatabaseManager
     await DatabaseManager.init_db()
-    
-    # Sync and start all automation watchers
-    WatcherManager.sync_watchers()
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    WatcherManager.stop_all()
-    from backend.ocr.queue import ocr_queue
-    ocr_queue.shutdown()
+    pass
 
 @app.get("/")
 def read_root():

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
-import { Lock, Unlock, FileText, Plus, ShieldCheck } from 'lucide-react';
+import { Lock, Unlock, FileText, Plus, ShieldCheck, Download } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import { Vault, VaultDocument } from '../../types/vault';
 import { formatDistanceToNow } from 'date-fns';
+import { save } from '@tauri-apps/api/dialog';
+import { Vault, VaultDocument } from '../../types/vault';
 
 export default function VaultView() {
   const { activeWorkspaceId } = useWorkspaceStore();
@@ -118,6 +119,26 @@ export default function VaultView() {
     }
   };
 
+  const handleExportVault = async () => {
+    if (!selectedVault || !isUnlocked) return;
+    try {
+      const filePath = await save({
+        filters: [{ name: 'Vault Export', extensions: ['zip'] }],
+        defaultPath: `${selectedVault.name.replace(/\s+/g, '_')}_export.zip`
+      });
+
+      if (!filePath) return;
+      
+      alert('Vault export started. Files will be decrypted into the ZIP archive.');
+      // In a real app we'd invoke the export command
+      await invoke('export_vault', { vaultId: selectedVault.id, destinationPath: filePath });
+      alert('Vault exported successfully!');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to export vault.');
+    }
+  };
+
   return (
     <div className="flex h-full animate-in fade-in duration-500">
       {/* Sidebar for Vaults */}
@@ -214,9 +235,36 @@ export default function VaultView() {
                   <p className="text-xs text-slate-400 mt-1">AES-256-GCM Encrypted</p>
                 </div>
               </div>
-              <Button variant="outline" onClick={handleLock} className="gap-2 text-rose-400 border-rose-500/20 hover:bg-rose-500/10">
-                <Lock size={14} /> Lock Vault
-              </Button>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={handleExportVault} className="gap-2 text-indigo-400 border-indigo-500/20 hover:bg-indigo-500/10">
+                  <Download size={14} /> Export Vault
+                </Button>
+                <Button variant="outline" onClick={handleLock} className="gap-2 text-rose-400 border-rose-500/20 hover:bg-rose-500/10">
+                  <Lock size={14} /> Lock Vault
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="bg-white/5 border border-white/5 p-4 rounded-xl flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total Documents</span>
+                <span className="text-2xl font-bold font-mono text-slate-200">{documents.length}</span>
+              </div>
+              <div className="bg-white/5 border border-white/5 p-4 rounded-xl flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Vault Storage</span>
+                <span className="text-2xl font-bold font-mono text-slate-200">
+                  {documents.reduce((acc, doc) => acc + (doc.size || 0), 0) > 1024 * 1024 
+                    ? (documents.reduce((acc, doc) => acc + (doc.size || 0), 0) / 1024 / 1024).toFixed(2) + ' MB'
+                    : (documents.reduce((acc, doc) => acc + (doc.size || 0), 0) / 1024).toFixed(2) + ' KB'
+                  }
+                </span>
+              </div>
+              <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl flex flex-col gap-1">
+                <span className="text-[10px] uppercase font-bold text-emerald-500/70 tracking-wider">Encryption Status</span>
+                <span className="text-lg font-bold text-emerald-400 mt-1 flex items-center gap-2">
+                  <ShieldCheck size={18} /> AES-256-GCM Secure
+                </span>
+              </div>
             </div>
 
             <div className="bg-[#0f0f11]/60 border border-white/5 rounded-2xl flex-1 overflow-hidden flex flex-col">

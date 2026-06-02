@@ -1,30 +1,25 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  Search, Cpu, Plus, X,
+  Search, Cpu, X,
   RefreshCw, HardDrive, Keyboard,
-  CornerDownRight, ChevronDown, Eye, FolderOpen, Bell
+  Eye, FolderOpen
 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { useWorkspaceStore } from './store/workspaceStore';
-import { FileRecord, RuleConditions, RuleAction } from './types';
+import { FileRecord } from './types';
 
 import CommandPalette from './components/CommandPalette';
 import Onboarding from './components/Onboarding';
 import Sidebar from './app/Sidebar';
-import ActivityCenter from './components/ActivityCenter';
-
-// Views Refactoring Subcomponents
 import DashboardView from './features/dashboard/DashboardView';
 import ExplorerView from './features/explorer/ExplorerView';
-import DuplicatesView from './features/duplicates/DuplicatesView';
-import AutomationView from './features/automation/AutomationView';
-import LogsView from './features/automation/LogsView';
-import OcrStudioView from './features/ocr-studio/OcrStudioView';
+import RelatedDocumentsSidebar from './features/explorer/RelatedDocumentsSidebar';
 import SettingsView from './features/settings/SettingsView';
 import OfficeStudioView from './features/office-studio/OfficeStudioView';
-import WorkflowStudio from './features/workflows/WorkflowStudio';
 import PdfStudioView from './features/pdf-studio/PdfStudioView';
 import VaultView from './features/vault/VaultView';
+import ReportingCenterView from './features/reporting/ReportingCenter';
+import MediaStudioView from './features/media-studio/MediaStudioView';
 
 export default function App() {
   const {
@@ -38,7 +33,6 @@ export default function App() {
     setActiveView,
     createWorkspace,
     startIndexing,
-    createRule,
     selectFolder,
     searchFiles,
     searchQuery,
@@ -49,9 +43,6 @@ export default function App() {
     return localStorage.getItem('sdw_onboarding_complete') === 'true';
   });
 
-  const [systemHealth, setSystemHealth] = useState<import('./types').SystemHealth | null>(null);
-  const [exporting, setExporting] = useState<string | null>(null);
-
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedExtension, setSelectedExtension] = useState<string | null>(null);
   const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
@@ -59,29 +50,18 @@ export default function App() {
   const [newWsPath, setNewWsPath] = useState('');
   const [newWsDesc, setNewWsDesc] = useState('');
   const [showDuplicates, setShowDuplicates] = useState(false);
-  const [showAdvancedRules, setShowAdvancedRules] = useState(false);
 
   // Command Palette UI State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  // Command Palette & Search
-  
-  // Activity Center State
-  const [isActivityCenterOpen, setIsActivityCenterOpen] = useState(false);
+
 
   // Selected file inspector focus (Right Context Panel)
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
-  const [inspectorTab, setInspectorTab] = useState<'preview' | 'details'>('details');
+  const [inspectorTab, setInspectorTab] = useState<'preview' | 'details' | 'relations'>('details');
 
   // Selected rows for bulk operations
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
 
-  // New Rule state
-  const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
-  const [newRuleName, setNewRuleName] = useState('');
-  const [newRuleConditions, setNewRuleConditions] = useState<RuleConditions>({});
-  const [newRuleActions, setNewRuleActions] = useState<RuleAction[]>([{ type: 'Move', payload: { destination: '' } }]);
-
-  // Keyboard shortcut help toggle
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
 
   // Toast notification system
@@ -161,46 +141,11 @@ export default function App() {
       }
       // View switchers: Alt+1, Alt+2, etc.
       if (e.altKey && e.key === '1') { e.preventDefault(); setActiveView('dashboard'); }
-      if (e.altKey && e.key === '2') { e.preventDefault(); setActiveView('files'); }
-      if (e.altKey && e.key === '3') { e.preventDefault(); setActiveView('duplicates'); }
-      if (e.altKey && e.key === '4') { e.preventDefault(); setActiveView('rules'); }
-      if (e.altKey && e.key === '5') { e.preventDefault(); setActiveView('logs'); }
+      if (e.altKey && e.key === '2') { e.preventDefault(); setActiveView('explorer'); }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setActiveView]);
-
-  useEffect(() => {
-    if (activeView === 'ocr') {
-      import('@tauri-apps/api/tauri').then(({ invoke }) => {
-        invoke('get_system_health').then((data: any) => setSystemHealth(data)).catch(console.error);
-      });
-    }
-  }, [activeView]);
-
-  const handleExportDb = async () => {
-    setExporting('db');
-    try {
-      const { invoke } = await import('@tauri-apps/api/tauri');
-      const path = await invoke<string>('export_database');
-      alert(`Database backed up to: ${path}`);
-    } catch (e) {
-      alert(`Export failed: ${e}`);
-    }
-    setExporting(null);
-  };
-
-  const handleExportRules = async () => {
-    setExporting('rules');
-    try {
-      const { invoke } = await import('@tauri-apps/api/tauri');
-      const path = await invoke<string>('export_rules');
-      alert(`Rules exported to: ${path}`);
-    } catch (e) {
-      alert(`Export failed: ${e}`);
-    }
-    setExporting(null);
-  };
 
   const handleCreateWorkspace = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,25 +155,6 @@ export default function App() {
     setNewWsName('');
     setNewWsPath('');
     setNewWsDesc('');
-  };
-
-  const handleCreateRule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRuleName.trim() || newRuleActions.length === 0) return;
-    
-    await createRule({
-      workspace_id: activeWorkspaceId!,
-      name: newRuleName,
-      is_active: true,
-      trigger_event: 'on_create',
-      conditions: newRuleConditions,
-      actions: newRuleActions
-    });
-
-    setIsRuleModalOpen(false);
-    setNewRuleName('');
-    setNewRuleConditions({});
-    setNewRuleActions([{ type: 'Move', payload: { destination: '' } }]);
   };
 
   // Helper formatting values
@@ -308,10 +234,6 @@ export default function App() {
       <Sidebar 
         setIsWorkspaceModalOpen={setIsWorkspaceModalOpen}
         setIsCommandPaletteOpen={setIsCommandPaletteOpen}
-        selectedCategory={selectedCategory}
-        setSelectedCategory={setSelectedCategory}
-        selectedExtension={selectedExtension}
-        setSelectedExtension={setSelectedExtension}
       />
 
       {/* ==================== 2. CENTER MAIN EXPLORER PANE ==================== */}
@@ -377,18 +299,7 @@ export default function App() {
               <span>Crawl</span>
             </button>
             
-            <div className="w-px h-4 bg-border-dark mx-1"></div>
 
-            <button 
-              onClick={() => setIsActivityCenterOpen(!isActivityCenterOpen)}
-              className="p-1.5 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 rounded relative transition-colors"
-              title="Activity Center"
-            >
-              <Bell className="h-4 w-4" />
-              {useWorkspaceStore.getState().logs.length === 0 && (
-                 <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse border border-zinc-950"></span>
-              )}
-            </button>
           </div>
         </header>
 
@@ -409,7 +320,7 @@ export default function App() {
           )}
 
           {/* ==================== VIEW 2: DOCUMENT EXPLORER ==================== */}
-          {activeView === 'files' && (
+          {activeView === 'explorer' && (
             <ExplorerView 
               selectedCategory={selectedCategory}
               setSelectedCategory={setSelectedCategory}
@@ -429,50 +340,20 @@ export default function App() {
             />
           )}
 
-          {/* ==================== VIEW 3: DUPLICATE MANAGEMENT ==================== */}
-          {activeView === 'duplicates' && (
-            <DuplicatesView 
-              formatBytes={formatBytes}
-              showToast={showToast}
-            />
-          )}
-
-          {/* ==================== VIEW 4: watch AUTOMATIONS ==================== */}
-          {activeView === 'rules' && (
-            <AutomationView 
-              setIsRuleModalOpen={setIsRuleModalOpen}
-            />
-          )}
-
-          {/* ==================== VIEW 5: ACTIVITY LOGS ==================== */}
-          {activeView === 'logs' && (
-            <LogsView 
-              formatDate={formatDate}
-            />
-          )}
-
-          {/* ==================== VIEW 6: DIAGNOSTICS ==================== */}
-          {activeView === 'ocr' && (
-            <OcrStudioView 
-              systemHealth={systemHealth}
-              exporting={exporting}
-              handleExportDb={handleExportDb}
-              handleExportRules={handleExportRules}
-            />
-          )}
-
           {/* ==================== VIEW: PDF TOOLS ==================== */}
           {activeView === 'pdf' && <PdfStudioView />}
 
           {/* ==================== VIEW: OFFICE WORKSPACE ==================== */}
           {activeView === 'office' && <OfficeStudioView />}
+          {activeView === 'media' && <MediaStudioView />}
+
+          {/* Security Vault View */}
+          {activeView === 'vault' && <VaultView />}
 
           {/* ==================== VIEW: SETTINGS CENTER ==================== */}
           {activeView === 'settings' && <SettingsView />}
 
-          {/* Security Vault View */}
-          {activeView === 'vault' && <VaultView />}
-          {activeView === 'workflows' && <WorkflowStudio />}
+          {activeView === 'reporting' && <ReportingCenterView />}
 
         </div>
       </main>
@@ -504,6 +385,16 @@ export default function App() {
                 >
                   Details
                 </button>
+                <button 
+                  onClick={() => setInspectorTab('relations')}
+                  className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-1 rounded transition-colors ${
+                    inspectorTab === 'relations' 
+                      ? 'bg-zinc-800 text-zinc-100 font-semibold' 
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  Relations
+                </button>
               </div>
               <button onClick={() => setSelectedFile(null)} className="text-zinc-500 hover:text-zinc-300">
                 <X className="h-4 w-4" />
@@ -513,7 +404,7 @@ export default function App() {
             {/* Inspector body based on active Tab */}
             <div className="p-4 space-y-4 overflow-y-auto min-h-0 flex-1 bg-zinc-900">
               
-              {inspectorTab === 'preview' ? (
+              {inspectorTab === 'preview' && (
                 <div className="space-y-4">
                   {selectedFile.extension === 'pdf' ? (
                     <div className="space-y-3">
@@ -601,7 +492,9 @@ export default function App() {
                     </div>
                   )}
                 </div>
-              ) : (
+              )}
+
+              {inspectorTab === 'details' && (
                 <div className="space-y-4 select-none">
                   <div>
                     <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">File Name</label>
@@ -723,6 +616,10 @@ export default function App() {
                 </div>
               )}
 
+              {inspectorTab === 'relations' && (
+                <RelatedDocumentsSidebar selectedFile={selectedFile} />
+              )}
+
             </div>
           </div>
 
@@ -825,231 +722,7 @@ export default function App() {
         </div>
       )}
 
-      {/* ==================== CREATE RULE DIALOG MODAL ==================== */}
-      {isRuleModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs select-none">
-          <form 
-            onSubmit={handleCreateRule}
-            className="w-[28rem] bg-zinc-900 border border-border-dark p-5 rounded-lg shadow-xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Build Watcher Automation</h3>
-              <button 
-                type="button" 
-                onClick={() => setIsRuleModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
 
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-              <div>
-                <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Rule Designation</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Process Invoices"
-                  value={newRuleName}
-                  onChange={(e) => setNewRuleName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-border-dark rounded p-2 text-xs text-zinc-200 outline-none focus:border-zinc-700"
-                  required
-                />
-              </div>
-
-              {/* Conditions Section */}
-              <div className="border border-border-dark rounded p-3 bg-zinc-950/50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-zinc-800 border border-border-dark flex items-center justify-center text-[8px]">1</div>
-                    When these conditions are met:
-                  </h4>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Extension matches</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. pdf (empty: all)"
-                        value={newRuleConditions.extensions?.join(', ') || ''}
-                        onChange={(e) => setNewRuleConditions({...newRuleConditions, extensions: e.target.value ? e.target.value.split(',').map(s=>s.trim()) : undefined})}
-                        className="w-full bg-zinc-900 border border-border-dark rounded p-2 text-xs text-zinc-200 outline-none focus:border-zinc-700"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Filename contains</label>
-                      <input 
-                        type="text" 
-                        placeholder="e.g. invoice"
-                        value={newRuleConditions.filename_contains || ''}
-                        onChange={(e) => setNewRuleConditions({...newRuleConditions, filename_contains: e.target.value || undefined})}
-                        className="w-full bg-zinc-900 border border-border-dark rounded p-2 text-xs text-zinc-200 outline-none focus:border-zinc-700"
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Advanced Rules Toggle */}
-                  <div className="flex items-center justify-between pt-2">
-                    <button 
-                      type="button"
-                      onClick={() => setShowAdvancedRules(!showAdvancedRules)}
-                      className="text-[10px] font-bold text-zinc-500 hover:text-zinc-300 uppercase tracking-widest flex items-center gap-1 transition-colors"
-                    >
-                      {showAdvancedRules ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
-                      Advanced Mode
-                    </button>
-                  </div>
-
-                  {showAdvancedRules && (
-                    <div className="space-y-3 pt-2 border-t border-border-dark/50 animate-in fade-in slide-in-from-top-2">
-                      <div>
-                        <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">OCR Content Contains</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. BALANCE DUE"
-                          value={newRuleConditions.content_contains || ''}
-                          onChange={(e) => setNewRuleConditions({...newRuleConditions, content_contains: e.target.value || undefined})}
-                          className="w-full bg-zinc-900 border border-indigo-500/30 rounded p-2 text-xs text-zinc-200 outline-none focus:border-indigo-500 placeholder-indigo-500/40"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider block mb-1">Regex Pattern Match</label>
-                        <input 
-                          type="text" 
-                          placeholder="e.g. ^receipt_.*"
-                          value={newRuleConditions.regex_match || ''}
-                          onChange={(e) => setNewRuleConditions({...newRuleConditions, regex_match: e.target.value || undefined})}
-                          className="w-full bg-zinc-900 border border-border-dark rounded p-2 text-xs text-zinc-200 font-mono outline-none focus:border-zinc-700"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions Section */}
-              <div className="border border-border-dark rounded p-3 bg-zinc-950/50">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-zinc-800 border border-border-dark flex items-center justify-center text-[8px]">2</div>
-                    Execute these actions sequentially:
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => setNewRuleActions([...newRuleActions, { type: 'Move', payload: { destination: '' } }])}
-                    className="text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-2 py-1 rounded border border-border-dark flex items-center gap-1 transition-colors"
-                  >
-                    <Plus className="h-3 w-3" /> Add Action
-                  </button>
-                </div>
-                
-                <div className="space-y-3">
-                  {newRuleActions.map((action, idx) => (
-                    <div key={idx} className="flex items-start gap-2 bg-zinc-900 border border-border-dark p-2 rounded">
-                      <div className="mt-1.5 flex flex-col items-center gap-1">
-                        <CornerDownRight className="h-3.5 w-3.5 text-zinc-500" />
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <select
-                            value={action.type}
-                            onChange={(e) => {
-                              const type = e.target.value as any;
-                              const newActions = [...newRuleActions];
-                              if (type === 'Move') newActions[idx] = { type, payload: { destination: '' } };
-                              else if (type === 'Rename') newActions[idx] = { type, payload: { pattern: '' } };
-                              else if (type === 'Tag') newActions[idx] = { type, payload: { tag_ids: [] } };
-                              else if (type === 'Categorize') newActions[idx] = { type, payload: { category: '' } };
-                              else if (type === 'Trash') newActions[idx] = { type: 'Trash' };
-                              setNewRuleActions(newActions);
-                            }}
-                            className="bg-zinc-950 border border-border-dark rounded px-2 py-1 text-xs text-zinc-300 outline-none w-32 shrink-0"
-                          >
-                            <option value="Move">Move to Folder</option>
-                            <option value="Rename">Smart Rename</option>
-                            <option value="Tag">Apply Tags</option>
-                            <option value="Categorize">Categorize</option>
-                            <option value="Trash">Move to Trash</option>
-                          </select>
-                          
-                          {action.type === 'Move' && (
-                            <input
-                              type="text"
-                              placeholder="/absolute/path/to/folder"
-                              value={action.payload.destination}
-                              onChange={(e) => {
-                                const newActions = [...newRuleActions];
-                                (newActions[idx] as any).payload.destination = e.target.value;
-                                setNewRuleActions(newActions);
-                              }}
-                              className="flex-1 bg-zinc-950 border border-border-dark rounded px-2 py-1 text-xs text-zinc-200 outline-none"
-                            />
-                          )}
-                          
-                          {action.type === 'Rename' && (
-                            <input
-                              type="text"
-                              placeholder="e.g. invoice_{date}_{filename}"
-                              value={action.payload.pattern}
-                              onChange={(e) => {
-                                const newActions = [...newRuleActions];
-                                (newActions[idx] as any).payload.pattern = e.target.value;
-                                setNewRuleActions(newActions);
-                              }}
-                              className="flex-1 bg-zinc-950 border border-border-dark rounded px-2 py-1 text-xs text-zinc-200 outline-none font-mono"
-                            />
-                          )}
-
-                          {action.type === 'Categorize' && (
-                            <input
-                              type="text"
-                              placeholder="e.g. Invoices"
-                              value={action.payload.category}
-                              onChange={(e) => {
-                                const newActions = [...newRuleActions];
-                                (newActions[idx] as any).payload.category = e.target.value;
-                                setNewRuleActions(newActions);
-                              }}
-                              className="flex-1 bg-zinc-950 border border-border-dark rounded px-2 py-1 text-xs text-zinc-200 outline-none"
-                            />
-                          )}
-                        </div>
-                        {action.type === 'Rename' && (
-                          <div className="text-[9px] text-zinc-500 font-mono">Available variables: {'{date}'}, {'{filename}'}</div>
-                        )}
-                      </div>
-                      <button 
-                        type="button"
-                        onClick={() => setNewRuleActions(newRuleActions.filter((_, i) => i !== idx))}
-                        className="text-zinc-600 hover:text-red-400 mt-1"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 justify-end pt-3 border-t border-border-dark">
-              <button 
-                type="button" 
-                onClick={() => setIsRuleModalOpen(false)}
-                className="bg-zinc-800 hover:bg-zinc-700 border border-border-dark/60 text-zinc-300 text-xs font-semibold px-3 py-1.5 rounded transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded transition-colors"
-              >
-                Build Automation Rule
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
 
       {/* ==================== KEYBOARD SHORTCUT HELP PANEL MODAL ==================== */}
       {showShortcutHelp && (
@@ -1110,16 +783,8 @@ export default function App() {
         setActiveView={setActiveView}
         startIndexing={startIndexing}
         setIsWorkspaceModalOpen={setIsWorkspaceModalOpen}
-        setIsRuleModalOpen={setIsRuleModalOpen}
         setSelectedFile={setSelectedFile}
         setInspectorTab={setInspectorTab}
-      />
-
-      {/* ==================== 5. ACTIVITY CENTER ==================== */}
-      <ActivityCenter 
-        isOpen={isActivityCenterOpen} 
-        onClose={() => setIsActivityCenterOpen(false)} 
-        logs={useWorkspaceStore.getState().logs} 
       />
 
       {/* ==================== TOAST NOTIFICATION SYSTEM ==================== */}

@@ -7,9 +7,8 @@ interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   startIndexing: () => void;
-  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'ocr' | 'pdf' | 'office' | 'settings') => void;
+  setActiveView: (view: 'dashboard' | 'explorer' | 'pdf' | 'office' | 'settings' | 'vault' | 'timeline' | 'reporting') => void;
   setIsWorkspaceModalOpen: (open: boolean) => void;
-  setIsRuleModalOpen: (open: boolean) => void;
   setSelectedFile: (file: FileRecord | null) => void;
   setInspectorTab: (tab: 'preview' | 'details') => void;
 }
@@ -20,7 +19,6 @@ export default function CommandPalette({
   startIndexing,
   setActiveView,
   setIsWorkspaceModalOpen,
-  setIsRuleModalOpen,
   setSelectedFile,
   setInspectorTab
 }: CommandPaletteProps) {
@@ -68,7 +66,7 @@ export default function CommandPalette({
       group: 'WORKSPACES',
       items: [
         { id: 'view-dashboard', name: 'Workspace Inbox', desc: 'Review deduplication and classification ideas', category: 'Navigation', action: () => { setActiveView('dashboard'); onClose(); } },
-        { id: 'view-files', name: 'Document Explorer', desc: 'Perform high-density search and extensions filter', category: 'Navigation', action: () => { setActiveView('files'); onClose(); } },
+        { id: 'view-explorer', name: 'Document Explorer', desc: 'Perform high-density search and extensions filter', category: 'Navigation', action: () => { setActiveView('explorer'); onClose(); } },
         { id: 'add-workspace', name: 'Register Monitored Directory', desc: 'Configure fresh physical folder paths', category: 'Workspace', action: () => { setIsWorkspaceModalOpen(true); onClose(); } },
       ]
     },
@@ -77,23 +75,21 @@ export default function CommandPalette({
       items: [
         { id: 'view-pdf-studio', name: 'PDF Studio', desc: 'Merge, split, watermark, compress and rotate PDFs', category: 'Navigation', action: () => { setActiveView('pdf'); onClose(); } },
         { id: 'view-office-studio', name: 'Office Studio', desc: 'Excel previews, CSV import, document generation', category: 'Navigation', action: () => { setActiveView('office'); onClose(); } },
-        { id: 'view-ocr-studio', name: 'OCR Studio', desc: 'Manage OCR queues and view running jobs', category: 'Navigation', action: () => { setActiveView('ocr'); onClose(); } },
+
       ]
     },
     {
       group: 'ACTIONS',
       items: [
         { id: 'scan', name: 'Crawl Workspace', desc: 'Runs recursive directory scan extracting metadata', category: 'Action', action: () => { startIndexing(); onClose(); } },
-        { id: 'view-duplicates', name: 'Review Duplicate Files', desc: 'Relocate wasted duplicate space safely to Recycle Bin', category: 'Navigation', action: () => { setActiveView('duplicates'); onClose(); } },
-        { id: 'view-rules', name: 'Configure Watcher Automations', desc: 'Setup custom MOVE, RENAME, or TAG action pathways', category: 'Navigation', action: () => { setActiveView('rules'); onClose(); } },
-        { id: 'add-rule', name: 'Build Automation Rule', desc: 'Establish rule triggers on creation events', category: 'Automation', action: () => { setIsRuleModalOpen(true); onClose(); } },
+        { id: 'view-reporting', name: 'Reporting Center', desc: 'Review analytics and duplicate files', category: 'Navigation', action: () => { setActiveView('reporting'); onClose(); } },
       ]
     },
     {
       group: 'SETTINGS',
       items: [
         { id: 'view-settings', name: 'Preferences', desc: 'Manage application preferences and settings', category: 'Navigation', action: () => { setActiveView('settings'); onClose(); } },
-        { id: 'view-logs', name: 'Execution Logs', desc: 'Analyze system automation move triggers', category: 'Navigation', action: () => { setActiveView('logs'); onClose(); } },
+        { id: 'view-vault', name: 'Security Vault', desc: 'Access encrypted document storage', category: 'Navigation', action: () => { setActiveView('vault'); onClose(); } },
       ]
     }
   ];
@@ -122,7 +118,7 @@ export default function CommandPalette({
       run: () => { 
         setSelectedFile(f); 
         setInspectorTab('preview');
-        setActiveView('files'); 
+        setActiveView('explorer'); 
         onClose(); 
       } 
     }))
@@ -234,7 +230,7 @@ export default function CommandPalette({
                         onClick={() => {
                           setSelectedFile(f); 
                           setInspectorTab('preview');
-                          setActiveView('files'); 
+                          setActiveView('explorer'); 
                           onClose();
                         }}
                         className={`cmd-palette-item flex items-center justify-between p-2 rounded cursor-pointer ${isFocused ? 'bg-indigo-500/10 border-l-2 border-indigo-500' : 'hover:bg-zinc-800/40 border-l-2 border-transparent'}`}

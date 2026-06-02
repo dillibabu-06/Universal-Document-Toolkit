@@ -32,14 +32,35 @@ export default function PdfStudioView() {
       const res = await fetch(`http://localhost:8000/api/pdf/${activePdfTool}`, { method: 'POST', body: formData });
       if (res.ok) {
         const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `result_${activePdfTool}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setUploadStatus({ status: 'success', message: `PDF ${activePdfTool} completed successfully!` });
+        
+        if (typeof window !== 'undefined' && (window as any).__TAURI_METADATA__) {
+          const { save } = await import('@tauri-apps/api/dialog');
+          const { writeBinaryFile } = await import('@tauri-apps/api/fs');
+          
+          const filePath = await save({
+            filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
+            defaultPath: `result_${activePdfTool}.pdf`
+          });
+          
+          if (filePath) {
+            const buffer = await blob.arrayBuffer();
+            await writeBinaryFile(filePath, new Uint8Array(buffer));
+            setUploadStatus({ status: 'success', message: `PDF ${activePdfTool} completed successfully! Saved to ${filePath}` });
+          } else {
+            setUploadStatus({ status: 'success', message: `Operation completed but save was cancelled.` });
+          }
+        } else {
+          // Fallback for browser testing
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `result_${activePdfTool}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setUploadStatus({ status: 'success', message: `PDF ${activePdfTool} completed successfully!` });
+        }
+        
         setPdfFiles([]);
       } else {
         const err = await res.json();

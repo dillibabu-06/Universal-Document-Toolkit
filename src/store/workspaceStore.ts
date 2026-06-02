@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { Workspace, FileRecord, DuplicateCluster, Rule, Tag, AutomationLog, IndexingStatus } from '../types';
+import { Workspace, FileRecord, DuplicateCluster, Tag, IndexingStatus, DocumentTimelineEvent, DocumentVersion, ReportingStats } from '../types';
+import { DocumentRelationship } from '../types/relationship';
 
 // Safe Tauri IPC wrapper supporting fallback mock modes when loaded in web browsers
-const runIPC = async <T>(cmd: string, args: Record<string, any> = {}): Promise<T> => {
+export const runIPC = async <T>(cmd: string, args: Record<string, any> = {}): Promise<T> => {
   if (typeof window !== 'undefined' && (window as any).__TAURI_METADATA__) {
     const { invoke } = await import('@tauri-apps/api/tauri');
     return invoke<T>(cmd, args);
@@ -110,37 +111,11 @@ const runIPC = async <T>(cmd: string, args: Record<string, any> = {}): Promise<T
             ]
           }
         ] as any;
-      case 'list_rules':
-        return [
-          {
-            id: 'rule-1',
-            workspace_id: 'ws-finance',
-            name: 'Sort PDFs to Finance',
-            is_active: true,
-            trigger_event: 'on_create',
-            conditions: { extensions: ['pdf'], filename_contains: 'invoice' },
-            actions: [{ type: 'Move', payload: { destination: '/Users/dillibabu/Downloads/finance/invoices' } }],
-            created_at: Date.now(),
-            updated_at: Date.now()
-          }
-        ] as any;
-      case 'list_automation_logs':
-        return [
-          {
-            id: 'log-1',
-            rule_id: 'rule-1',
-            rule_name: 'Sort PDFs to Finance',
-            file_path: '/Users/dillibabu/Downloads/finance/invoice_2026_q1.pdf',
-            action_taken: 'Moved to /Users/dillibabu/Downloads/finance/invoices',
-            timestamp: Date.now() - 30000,
-            success: true
-          }
-        ] as any;
-      case 'list_tags':
-        return [
-          { id: 'tag-1', name: 'Urgent', color: '#ef4444', created_at: Date.now() },
-          { id: 'tag-2', name: 'Work', color: '#3b82f6', created_at: Date.now() }
-        ] as any;
+
+      case 'add_relationship':
+        return {} as any;
+      case 'delete_relationship':
+        return {} as any;
       case 'select_folder':
         return '/Users/dillibabu/Downloads/finance' as any;
       case 'trash_file':
@@ -157,6 +132,72 @@ const runIPC = async <T>(cmd: string, args: Record<string, any> = {}): Promise<T
           wasted_size: 125432,
           by_category: { Invoice: 1, Resume: 1, Receipt: 1 }
         } as any;
+      case 'get_document_timeline':
+        return [
+          {
+            id: 'evt-1',
+            file_id: args.fileId || '1',
+            event_type: 'Created',
+            title: 'Document Discovered',
+            description: 'File discovered and registered in workspace.',
+            created_at: Math.floor(Date.now() / 1000) - 3600 * 24 * 3
+          },
+
+          {
+            id: 'evt-4',
+            file_id: args.fileId || '1',
+            event_type: 'LinkCreated',
+            title: 'Linked Document',
+            description: 'Created relationship of type \'paid_by\' with target receipt_uber_delhi.jpg.',
+            created_at: Math.floor(Date.now() / 1000) - 3600 * 2
+          }
+        ] as any;
+      case 'list_document_versions':
+        return [
+          {
+            id: 'ver-2',
+            file_id: args.fileId,
+            version_number: 2,
+            filename: 'invoice_2026_q1.pdf',
+            comment: 'Added secondary header entity',
+            backup_path: '/mock/versions/2.pdf',
+            hash: 'hash-v2',
+            created_at: Math.floor(Date.now() / 1000) - 3600 * 2
+          },
+          {
+            id: 'ver-1',
+            file_id: args.fileId,
+            version_number: 1,
+            filename: 'invoice_2026_q1.pdf',
+            comment: 'Base upload checkpoint',
+            backup_path: '/mock/versions/1.pdf',
+            hash: 'hash-v1',
+            created_at: Math.floor(Date.now() / 1000) - 3600 * 24
+          }
+        ] as any;
+      case 'create_document_version':
+        return {
+          id: Math.random().toString(),
+          file_id: args.fileId,
+          version_number: 3,
+          filename: 'invoice_2026_q1.pdf',
+          comment: args.comment || 'Manual version checkpoint',
+          backup_path: '/mock/versions/3.pdf',
+          hash: 'hash-v3',
+          created_at: Math.floor(Date.now() / 1000)
+        } as any;
+      case 'restore_document_version':
+        return {} as any;
+      case 'get_reporting_stats':
+        return {
+          total_files: 1245,
+          total_size_bytes: 450000000,
+          duplicate_count: 34,
+          wasted_size_bytes: 12000000,
+          category_distribution: { Invoice: 450, Receipt: 320, Contract: 120, 'Tax Document': 50, Other: 305 },
+          total_vaults: 2,
+          vaulted_docs_count: 45
+        } as any;
       default:
         return {} as T;
     }
@@ -169,15 +210,16 @@ interface WorkspaceStore {
   files: FileRecord[];
   searchResults: FileRecord[]; // FTS5 search-specific results for command palette
   duplicates: DuplicateCluster[];
-  rules: Rule[];
-  logs: AutomationLog[];
   tags: Tag[];
+  relationships: DocumentRelationship[];
+  relatedDocs: Array<[DocumentRelationship, FileRecord]>;
+  recommendations: FileRecord[];
   indexingStatus: IndexingStatus;
-  activeView: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'ocr' | 'pdf' | 'office' | 'settings' | 'vault' | 'workflows';
+  activeView: 'dashboard' | 'explorer' | 'pdf' | 'office' | 'media' | 'settings' | 'vault' | 'timeline' | 'reporting';
   searchQuery: string; // Tracks last search query for command palette
 
   // Navigation & Base Actions
-  setActiveView: (view: 'dashboard' | 'files' | 'duplicates' | 'rules' | 'logs' | 'ocr' | 'pdf' | 'office' | 'settings' | 'vault' | 'workflows') => void;
+  setActiveView: (view: 'dashboard' | 'explorer' | 'pdf' | 'office' | 'media' | 'settings' | 'vault' | 'timeline' | 'reporting') => void;
   setActiveWorkspace: (id: string | null) => void;
   init: () => Promise<void>;
   
@@ -196,15 +238,32 @@ interface WorkspaceStore {
   trashFile: (path: string) => Promise<boolean>;
   openFileLocation: (path: string) => Promise<void>;
   
-  // Rules Actions
-  createRule: (rule: Omit<Rule, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
-  deleteRule: (id: string) => Promise<void>;
-
   // Tags Actions
   createTag: (name: string, color: string) => Promise<void>;
 
   // Folder Selector
   selectFolder: () => Promise<string | null>;
+
+  // Relationships Actions
+  loadRelationships: () => Promise<void>;
+  loadRelatedDocs: (fileId: string) => Promise<void>;
+  loadRecommendations: (fileId: string) => Promise<void>;
+  addRelationship: (sourceId: string, targetId: string, relType: string) => Promise<void>;
+  deleteRelationship: (id: string) => Promise<void>;
+
+  // Timeline Actions
+  selectedFileTimeline: DocumentTimelineEvent[];
+  loadDocumentTimeline: (fileId: string) => Promise<void>;
+
+  // Versioning Actions
+  selectedFileVersions: DocumentVersion[];
+  loadDocumentVersions: (fileId: string) => Promise<void>;
+  createDocumentVersion: (fileId: string, comment?: string) => Promise<void>;
+  restoreDocumentVersion: (versionId: string) => Promise<void>;
+
+  // Reporting Actions
+  reportingStats: ReportingStats | null;
+  loadReportingStats: () => Promise<void>;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
@@ -213,24 +272,36 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   files: [],
   searchResults: [],
   duplicates: [],
-  rules: [],
-  logs: [],
   tags: [],
+  relationships: [],
+  relatedDocs: [],
+  recommendations: [],
+  selectedFileTimeline: [],
+  selectedFileVersions: [],
   indexingStatus: { type: 'Idle' },
   activeView: 'dashboard',
   searchQuery: '',
+  reportingStats: null,
 
   setActiveView: (activeView) => set({ activeView }),
   
   setActiveWorkspace: (id) => {
-    set({ activeWorkspaceId: id, indexingStatus: { type: 'Idle' } });
+    set({ 
+      activeWorkspaceId: id, 
+      indexingStatus: { type: 'Idle' }
+    });
     if (id) {
       get().searchFiles('', false, 0);
       runIPC<DuplicateCluster[]>('list_duplicates', { workspaceId: id }).then(dups => set({ duplicates: dups }));
-      runIPC<Rule[]>('list_rules', { workspaceId: id }).then(rules => set({ rules }));
-      runIPC<AutomationLog[]>('list_automation_logs', { limit: 20 }).then(logs => set({ logs }));
+      get().loadRelationships();
     } else {
-      set({ files: [], duplicates: [], rules: [] });
+      set({ 
+        files: [], 
+        duplicates: [], 
+        relationships: [], 
+        relatedDocs: [], 
+        recommendations: []
+      });
     }
   },
 
@@ -360,31 +431,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     }
   },
 
-  createRule: async (ruleData) => {
-    const activeId = get().activeWorkspaceId;
-    if (!activeId) return;
-    try {
-      const newRule: Rule = {
-        ...ruleData,
-        id: Math.random().toString(),
-        created_at: Date.now(),
-        updated_at: Date.now()
-      };
-      await runIPC('create_rule', { rule: newRule });
-      set(state => ({ rules: [...state.rules, newRule] }));
-    } catch (e) {
-      console.error("Create rule failed", e);
-    }
-  },
 
-  deleteRule: async (id) => {
-    try {
-      await runIPC('delete_rule', { id });
-      set(state => ({ rules: state.rules.filter(r => r.id !== id) }));
-    } catch (e) {
-      console.error("Delete rule failed", e);
-    }
-  },
 
   createTag: async (name, color) => {
     try {
@@ -402,6 +449,122 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     } catch (e) {
       console.error("Select folder failed", e);
       return null;
+    }
+  },
+
+
+
+  loadRelationships: async () => {
+    const activeId = get().activeWorkspaceId;
+    if (!activeId) return;
+    try {
+      const rels = await runIPC<DocumentRelationship[]>('list_relationships', { workspaceId: activeId });
+      set({ relationships: rels });
+    } catch (e) {
+      console.error("Load relationships failed", e);
+    }
+  },
+
+  loadRelatedDocs: async (fileId) => {
+    try {
+      const related = await runIPC<Array<[DocumentRelationship, FileRecord]>>('get_related_documents', { fileId });
+      set({ relatedDocs: related });
+    } catch (e) {
+      console.error("Load related docs failed", e);
+    }
+  },
+
+  loadRecommendations: async (fileId) => {
+    try {
+      const recs = await runIPC<FileRecord[]>('get_recommendations', { fileId });
+      set({ recommendations: recs });
+    } catch (e) {
+      console.error("Load recommendations failed", e);
+    }
+  },
+
+  addRelationship: async (sourceId, targetId, relType) => {
+    try {
+      await runIPC('add_relationship', { 
+        sourceFileId: sourceId, 
+        targetFileId: targetId, 
+        relationshipType: relType 
+      });
+      await get().loadRelationships();
+    } catch (e) {
+      console.error("Add relationship failed", e);
+      throw e;
+    }
+  },
+
+  deleteRelationship: async (id) => {
+    try {
+      await runIPC('delete_relationship', { id });
+      await get().loadRelationships();
+    } catch (e) {
+      console.error("Delete relationship failed", e);
+    }
+  },
+
+
+
+  loadDocumentTimeline: async (fileId) => {
+    try {
+      const res = await runIPC<DocumentTimelineEvent[]>('get_document_timeline', { fileId });
+      set({ selectedFileTimeline: res });
+    } catch (e) {
+      console.error("Load document timeline failed", e);
+    }
+  },
+
+  loadDocumentVersions: async (fileId) => {
+    try {
+      const res = await runIPC<DocumentVersion[]>('list_document_versions', { fileId });
+      set({ selectedFileVersions: res });
+    } catch (e) {
+      console.error("Load document versions failed", e);
+    }
+  },
+
+  createDocumentVersion: async (fileId, comment) => {
+    try {
+      await runIPC('create_document_version', { fileId, comment });
+      await get().loadDocumentVersions(fileId);
+      await get().loadDocumentTimeline(fileId);
+    } catch (e) {
+      console.error("Create document version failed", e);
+      throw e;
+    }
+  },
+
+  restoreDocumentVersion: async (versionId) => {
+    try {
+      await runIPC('restore_document_version', { versionId });
+      const versions = get().selectedFileVersions;
+      const match = versions.find(v => v.id === versionId);
+      if (match) {
+        await get().loadDocumentVersions(match.file_id);
+        await get().loadDocumentTimeline(match.file_id);
+        // Refresh active workspace files list to show updated size/modified metrics
+        const activeId = get().activeWorkspaceId;
+        if (activeId) {
+          await get().searchFiles(get().searchQuery);
+        }
+      }
+    } catch (e) {
+      console.error("Restore document version failed", e);
+      throw e;
+    }
+  },
+
+  loadReportingStats: async () => {
+    const activeId = get().activeWorkspaceId;
+    if (!activeId) return;
+    try {
+      const stats = await runIPC<ReportingStats>('get_reporting_stats', { workspaceId: activeId });
+      set({ reportingStats: stats });
+    } catch (e) {
+      console.error("Load reporting stats failed", e);
     }
   }
 }));

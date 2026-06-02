@@ -55,10 +55,6 @@ fn main() {
             list_installed_plugins,
             execute_plugin,
             trigger_indexing,
-            list_rules,
-            create_rule,
-            delete_rule,
-            list_automation_logs,
             create_vault,
             list_vaults,
             lock_vault,
@@ -75,18 +71,22 @@ fn main() {
             get_workspace_stats,
             get_system_health,
             export_database,
-            export_rules,
-            get_document_metadata,
-            save_document_metadata,
-            save_workflow,
-            list_workflows,
-            get_workflow,
-            delete_workflow,
             export_workspace,
             import_workspace,
             list_marketplace_plugins,
-            install_plugin_from_marketplace
-        ])
+            install_plugin_from_marketplace,
+            add_relationship,
+            delete_relationship,
+            list_relationships,
+            get_related_documents,
+            get_recommendations,
+            get_document_timeline,
+            list_document_versions,
+            create_document_version,
+            restore_document_version,
+            get_reporting_stats,
+            export_report
+])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

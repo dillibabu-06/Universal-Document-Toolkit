@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  Cpu, Plus, ChevronDown, Layers, Search, Sliders, Activity, Terminal, FileText, ShieldCheck, Copy,
-  Settings, FileSpreadsheet, Network
+  Cpu, Plus, ChevronDown, Layers, Search, FileText, ShieldCheck, 
+  Settings, FileSpreadsheet, PieChart, Clock, Image as ImageIcon
 } from 'lucide-react';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,38 +9,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface SidebarProps {
   setIsWorkspaceModalOpen: (open: boolean) => void;
   setIsCommandPaletteOpen: (open: boolean) => void;
-  selectedCategory: string | null;
-  setSelectedCategory: (cat: string | null) => void;
-  selectedExtension: string | null;
-  setSelectedExtension: (ext: string | null) => void;
 }
 
 export default function Sidebar({
   setIsWorkspaceModalOpen,
   setIsCommandPaletteOpen,
-  selectedCategory,
-  setSelectedCategory,
-  setSelectedExtension
 }: SidebarProps) {
   const {
     activeView,
     setActiveView,
-    rules,
-    files,
-    duplicates,
   } = useWorkspaceStore();
 
   const [sidebarGroups, setSidebarGroups] = useState({
     pinned: true,
     navigation: true,
-    smartFilters: true,
   });
 
   const toggleGroup = (key: keyof typeof sidebarGroups) => {
     setSidebarGroups(prev => ({ ...prev, [key]: !prev[key] }));
   };
-
-  const categories = ['Invoice', 'Receipt', 'Resume', 'Tax Document', 'Bank Statement', 'Contract', 'College Notes'];
 
   return (
     <aside className="w-64 matte-sidebar flex flex-col justify-between shrink-0 select-none transition-all duration-300">
@@ -98,66 +85,50 @@ export default function Sidebar({
                   <NavButton 
                     icon={<Search />} 
                     label="Explorer" 
-                    isActive={activeView === 'files'} 
-                    onClick={() => setActiveView('files')} 
+                    isActive={activeView === 'explorer'} 
+                    onClick={() => setActiveView('explorer')} 
                     shortcut="⌥2"
-                  />
-                  <NavButton 
-                    icon={<Copy className="h-4 w-4" />} 
-                    label="Duplicates" 
-                    isActive={activeView === 'duplicates'} 
-                    onClick={() => setActiveView('duplicates')} 
-                    shortcut="⌥3"
-                    badge={duplicates.length > 0 ? duplicates.length : undefined}
-                  />
-                  <NavButton 
-                    icon={<Sliders />} 
-                    label="Automations" 
-                    isActive={activeView === 'rules'} 
-                    onClick={() => setActiveView('rules')} 
-                    shortcut="⌥4"
-                    badge={rules.length > 0 ? rules.length : undefined}
-                  />
-                  <NavButton 
-                    icon={<Network />} 
-                    label="Workflow Studio" 
-                    isActive={activeView === 'workflows'} 
-                    onClick={() => setActiveView('workflows')} 
-                    shortcut="⌥5"
                   />
                   <NavButton 
                     icon={<FileText />} 
                     label="PDF Studio" 
                     isActive={activeView === 'pdf'} 
                     onClick={() => setActiveView('pdf')} 
-                    shortcut="⌥6"
+                    shortcut="⌥3"
                   />
                   <NavButton 
                     icon={<FileSpreadsheet />} 
                     label="Office Studio" 
                     isActive={activeView === 'office'} 
                     onClick={() => setActiveView('office')} 
-                    shortcut="⌥7"
+                    shortcut="⌥4"
                   />
                   <NavButton 
-                    icon={<Activity />} 
-                    label="Logs" 
-                    isActive={activeView === 'logs'} 
-                    onClick={() => setActiveView('logs')} 
-                    shortcut="⌥8"
+                    icon={<ImageIcon />} 
+                    label="Media Center" 
+                    isActive={activeView === 'media'} 
+                    onClick={() => setActiveView('media')} 
+                    shortcut="⌥5"
                   />
                   <NavButton 
                     icon={<ShieldCheck />} 
                     label="Security Vault" 
                     isActive={activeView === 'vault'} 
                     onClick={() => setActiveView('vault')} 
-                    shortcut="⌥9"
+                    shortcut="⌥6"
                   />
                   <NavButton 
-                    icon={<Terminal />} 
-                    label="OCR Studio" 
-                    isActive={activeView === 'ocr'} 
-                    onClick={() => setActiveView('ocr')} 
+                    icon={<Clock />} 
+                    label="Timeline" 
+                    isActive={activeView === 'timeline'} 
+                    onClick={() => setActiveView('timeline')} 
+                    shortcut="⌥7"
+                  />
+                  <NavButton 
+                    icon={<PieChart />} 
+                    label="Reporting Center" 
+                    isActive={activeView === 'reporting'} 
+                    onClick={() => setActiveView('reporting')} 
                     shortcut="⌥8"
                   />
                   <NavButton 
@@ -172,63 +143,13 @@ export default function Sidebar({
             </AnimatePresence>
           </div>
 
-          {/* Group 2: Smart Collections */}
-          <div className="space-y-1">
-            <div 
-              onClick={() => toggleGroup('smartFilters')}
-              className="flex items-center justify-between text-sidebar-label px-2 py-1.5 hover:text-slate-300 cursor-pointer mb-1"
-            >
-              <span>Smart Collections</span>
-              <motion.div animate={{ rotate: sidebarGroups.smartFilters ? 0 : -90 }} transition={{ duration: 0.2 }}>
-                <ChevronDown className="h-3 w-3" />
-              </motion.div>
-            </div>
 
-            <AnimatePresence initial={false}>
-              {sidebarGroups.smartFilters && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-0.5 overflow-hidden"
-                >
-                  {categories.map((cat) => {
-                    const count = files.filter(f => f.category === cat).length;
-                    const isActive = selectedCategory === cat && activeView === 'files';
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => { setSelectedCategory(cat); setSelectedExtension(null); setActiveView('files'); }}
-                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                          isActive 
-                            ? 'bg-white/10 text-white shadow-sm' 
-                            : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200'
-                        }`}
-                      >
-                        <FileText className={`h-4 w-4 ${isActive ? 'text-indigo-400' : 'text-zinc-500'}`} />
-                        <span className="truncate">{cat}</span>
-                        {count > 0 && (
-                          <span className="ml-auto text-[10px] font-mono text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded-md border border-white/5">{count}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
         </nav>
       </div>
 
       {/* Footer Meta indicators */}
       <div className="p-4 border-t border-white/5 bg-black/40 flex flex-col gap-3 shrink-0 select-none">
-        <div className="flex items-center justify-between text-[10px] text-zinc-500 font-semibold px-1">
-          <span className="flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500/70" /> Encrypted Vault</span>
-          <span className="uppercase text-[9px] font-bold text-zinc-600 bg-white/5 px-1.5 py-0.5 rounded">Local</span>
-        </div>
-
         <button 
           onClick={() => setIsCommandPaletteOpen(true)}
           className="w-full py-2 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-zinc-300 rounded-md text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"

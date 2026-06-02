@@ -1,5 +1,5 @@
 
-import { Copy, FileText, Sliders, ShieldCheck, HardDrive, Zap, Activity } from 'lucide-react';
+import { Copy, FileText, ShieldCheck, HardDrive, Zap, Activity } from 'lucide-react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { FileRecord } from '../../types';
 
@@ -25,7 +25,6 @@ export default function DashboardView({
   const {
     files,
     duplicates,
-    rules,
     setActiveView,
     startIndexing,
     indexingStatus
@@ -88,33 +87,110 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Automations Executed Card */}
-        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all duration-300">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-amber-500/10 transition-all"></div>
+        {/* Vault Documents Card */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-violet-500/40 transition-all duration-300">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-violet-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-violet-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Automations</span>
-              <Zap className="h-4 w-4 text-zinc-500" />
+              <span className="text-[9px] font-bold text-violet-400 bg-violet-500/10 border border-violet-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Vault</span>
+              <ShieldCheck className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">14</h2>
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">0</h2>
             <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
-              <span className="text-amber-400 font-bold">Rules fired</span> this week
+              <span className="text-violet-400 font-bold">Encrypted</span> files
             </p>
           </div>
         </div>
 
-        {/* OCR Success Rate Card */}
+        {/* Searches Performed Card */}
         <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] p-4 rounded-xl flex flex-col justify-between shadow-lg relative overflow-hidden group hover:border-cyan-500/40 transition-all duration-300">
           <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-cyan-500/10 transition-all"></div>
           <div>
             <div className="flex justify-between items-center">
-              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded px-2 py-0.5 tracking-wider uppercase">OCR Scan</span>
+              <span className="text-[9px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 rounded px-2 py-0.5 tracking-wider uppercase">Searches</span>
               <Activity className="h-4 w-4 text-zinc-500" />
             </div>
-            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">99.8%</h2>
+            <h2 className="text-2xl font-bold text-zinc-100 font-mono mt-3">12</h2>
             <p className="text-[9px] text-zinc-500 mt-1 flex items-center gap-1">
-              <span className="text-cyan-400 font-bold">Success rate</span> extraction
+              <span className="text-cyan-400 font-bold">Queries</span> executed
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== QUICK ACTIONS & RECENT ACTIVITY ==================== */}
+      <div className="grid grid-cols-2 gap-6 mt-6">
+        
+        {/* Quick Actions */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] rounded-xl overflow-hidden shadow-lg flex flex-col h-[340px]">
+          <div className="px-5 py-4 border-b border-[#2C2E33] bg-[#1a1d24]/50">
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+              <Zap className="h-3.5 w-3.5 text-amber-400" /> Quick Actions
+            </h3>
+          </div>
+          <div className="p-4 grid grid-cols-2 gap-3 flex-1 overflow-y-auto">
+            <button onClick={() => startIndexing()} className="flex flex-col items-center justify-center p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-lg transition-all group">
+              <HardDrive className="h-6 w-6 text-indigo-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-zinc-300">Import Folder</span>
+            </button>
+            <button onClick={() => setActiveView('explorer')} className="flex flex-col items-center justify-center p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-lg transition-all group">
+              <FileText className="h-6 w-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-zinc-300">Open Explorer</span>
+            </button>
+            <button onClick={() => setActiveView('vault')} className="flex flex-col items-center justify-center p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-lg transition-all group">
+              <ShieldCheck className="h-6 w-6 text-violet-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-zinc-300">Create Vault</span>
+            </button>
+            <button onClick={() => setActiveView('reporting')} className="flex flex-col items-center justify-center p-4 bg-zinc-900/50 hover:bg-zinc-800 border border-white/5 rounded-lg transition-all group">
+              <Activity className="h-6 w-6 text-emerald-400 mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-xs font-bold text-zinc-300">Generate Report</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="bg-[#16191d]/75 backdrop-blur-md border border-[#2C2E33] rounded-xl overflow-hidden shadow-lg flex flex-col h-[340px]">
+          <div className="px-5 py-4 border-b border-[#2C2E33] bg-[#1a1d24]/50 flex justify-between items-center">
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest flex items-center gap-2">
+              <Activity className="h-3.5 w-3.5 text-rose-400" /> Recent Activity
+            </h3>
+            <button onClick={() => setActiveView('timeline')} className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider">
+              View All
+            </button>
+          </div>
+          <div className="p-0 flex-1 overflow-y-auto">
+            {files.slice(0, 5).map((file, i) => (
+              <div 
+                key={file.id} 
+                className="flex items-center justify-between px-5 py-3 border-b border-[#2C2E33]/50 hover:bg-[#1a1d24] cursor-pointer transition-colors"
+                onClick={() => {
+                  setSelectedFile(file);
+                  setActiveView('explorer');
+                }}
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className={`w-8 h-8 rounded flex items-center justify-center shrink-0 ${
+                    i === 0 ? 'bg-emerald-500/10 text-emerald-400' :
+                    i === 1 ? 'bg-blue-500/10 text-blue-400' :
+                    'bg-zinc-800 text-zinc-400'
+                  }`}>
+                    <FileText size={14} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-bold text-zinc-200 truncate">{file.filename}</span>
+                    <span className="text-[10px] text-zinc-500 truncate">{file.path}</span>
+                  </div>
+                </div>
+                <div className="text-[10px] text-zinc-500 whitespace-nowrap shrink-0 ml-4">
+                  {i === 0 ? 'Just now' : i === 1 ? '5m ago' : 'Today'}
+                </div>
+              </div>
+            ))}
+            {files.length === 0 && (
+              <div className="p-8 text-center text-zinc-500 text-xs italic">
+                No recent activity. Import a folder to get started.
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -139,10 +215,10 @@ export default function DashboardView({
               </div>
             </div>
             <button 
-              onClick={() => setActiveView('duplicates')}
+              onClick={() => setActiveView('reporting')}
               className="px-3 py-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs rounded border border-border-dark/60 font-semibold transition-colors shrink-0"
             >
-              Clean Duplicates ({formatBytes(wastedBytes)} wasted)
+              View Duplicate Analysis ({formatBytes(wastedBytes)} wasted)
             </button>
           </div>
         )}
@@ -159,7 +235,7 @@ export default function DashboardView({
               </div>
             </div>
             <button 
-              onClick={() => setActiveView('files')}
+              onClick={() => setActiveView('explorer')}
               className="px-3 py-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs rounded border border-border-dark/60 font-semibold transition-colors shrink-0"
             >
               Assign Category
@@ -167,25 +243,7 @@ export default function DashboardView({
           </div>
         )}
 
-        {rules.length === 0 && (
-          <div className="p-3.5 bg-zinc-900 border border-border-dark/80 rounded-md flex items-center justify-between gap-4 transition-all duration-150 hover:border-zinc-700">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="p-2.5 bg-zinc-800 rounded-lg text-zinc-400 border border-border-dark/60 shrink-0">
-                <Sliders className="h-4 w-4" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="text-xs font-semibold text-zinc-200">Establish Workspace Watchers</h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5">Establish watch conditions sorting files dynamically on creation automatically.</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setActiveView('rules')}
-              className="px-3 py-1 bg-zinc-850 hover:bg-zinc-800 text-zinc-300 text-xs rounded border border-border-dark/60 font-semibold transition-colors shrink-0"
-            >
-              Configure watch rule
-            </button>
-          </div>
-        )}
+
 
         {duplicates.length === 0 && files.length > 0 && (
           <div className="p-3.5 bg-zinc-900 border border-border-dark/80 rounded-md flex items-center gap-3 transition-all duration-150 border-l-2 border-l-emerald-500 bg-emerald-500/5 hover:border-border-dark">
@@ -202,7 +260,7 @@ export default function DashboardView({
       <div className="space-y-2.5 pt-4">
         <div className="flex items-center justify-between select-none">
           <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Recent Activity Ledger</h3>
-          <button onClick={() => setActiveView('files')} className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold">View all files</button>
+          <button onClick={() => setActiveView('explorer')} className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold">View all files</button>
         </div>
 
         <div className="matte-panel overflow-hidden">

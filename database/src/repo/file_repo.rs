@@ -114,13 +114,31 @@ impl<'a> FileRepository<'a> {
         }
     }
 
+    pub fn get_by_id(&self, id: &str) -> Result<Option<FileRecord>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, workspace_id, filename, extension, path, size, hash, created_at, modified_at, indexed_at, category FROM files WHERE id = ?1"
+        ).map_err(|e| AppError::Database(format!("Failed to prepare select by id: {}", e)))?;
+
+        let mut rows = stmt
+            .query(params![id])
+            .map_err(|e| AppError::Database(format!("Failed to query select by id: {}", e)))?;
+
+        if let Some(row) = rows.next().map_err(|e| AppError::Database(e.to_string()))? {
+            Ok(Some(
+                Self::row_to_record(row).map_err(|e| AppError::Database(e.to_string()))?,
+            ))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn list_by_workspace(&self, workspace_id: &str) -> Result<Vec<FileRecord>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, workspace_id, filename, extension, path, size, hash, created_at, modified_at, indexed_at, category FROM files WHERE workspace_id = ?1"
         ).map_err(|e| AppError::Database(format!("Failed to list files: {}", e)))?;
 
         let file_iter = stmt
-            .query_map(params![workspace_id], |row| Self::row_to_record(row))
+            .query_map(params![workspace_id], Self::row_to_record)
             .map_err(|e| AppError::Database(format!("Query failed: {}", e)))?;
 
         let mut files = Vec::new();
@@ -163,10 +181,7 @@ impl<'a> FileRepository<'a> {
     pub fn search_fts(&self, workspace_id: &str, query_str: &str, limit: usize, offset: usize) -> Result<Vec<FileRecord>> {
         let sanitized = query_str
             .replace("\"", "\"\"")
-            .replace('*', "")
-            .replace('^', "")
-            .replace('(', "")
-            .replace(')', "");
+            .replace(['*', '^', '(', ')'], "");
         let clean_query = format!("\"{}\"*", sanitized);
 
         let mut stmt = self.conn.prepare(
@@ -197,6 +212,7 @@ impl<'a> FileRepository<'a> {
     }
 
     #[tracing::instrument(skip(self))]
+    #[allow(clippy::too_many_arguments)]
     pub fn search_smart(
         &self,
         workspace_id: &str,
@@ -204,15 +220,16 @@ impl<'a> FileRepository<'a> {
         category: Option<&str>,
         amount_gt: Option<f64>,
         amount_lt: Option<f64>,
+        created_after: Option<i64>,
+        created_before: Option<i64>,
+        target_keyword: Option<&str>,
+        target_category: Option<&str>,
         limit: usize,
         offset: usize,
     ) -> Result<Vec<FileRecord>> {
         let sanitized = keyword
             .replace("\"", "\"\"")
-            .replace('*', "")
-            .replace('^', "")
-            .replace('(', "")
-            .replace(')', "");
+            .replace(['*', '^', '(', ')'], "");
         let clean_query = format!("\"{}\"*", sanitized);
 
         let mut query = String::from(
@@ -227,8 +244,8 @@ impl<'a> FileRepository<'a> {
             query.push_str(" AND files_fts MATCH ?2 ");
         }
 
-        if category.is_some() {
-            query.push_str(&format!(" AND f.category = '{}' ", category.unwrap()));
+        if let Some(c) = category {
+            query.push_str(&format!(" AND f.category = '{}' ", c));
         }
 
         if amount_gt.is_some() || amount_lt.is_some() {
@@ -239,6 +256,42 @@ impl<'a> FileRepository<'a> {
             if let Some(lt) = amount_lt {
                 query.push_str(&format!(" AND CAST(e.value AS REAL) < {} ", lt));
             }
+            query.push_str(") ");
+        }
+
+        if let Some(after) = created_after {
+            query.push_str(&format!(" AND f.created_at >= {} ", after));
+        }
+
+        if let Some(before) = created_before {
+            query.push_str(&format!(" AND f.created_at <= {} ", before));
+        }
+
+        // Relational Graph Traversal query join conditions
+        if target_keyword.is_some() || target_category.is_some() {
+            query.push_str(" AND EXISTS (
+                SELECT 1 FROM document_relationships rel
+                JOIN files target_f ON (
+                    (rel.source_file_id = f.id AND rel.target_file_id = target_f.id) OR
+                    (rel.target_file_id = f.id AND rel.source_file_id = target_f.id)
+                )
+                WHERE target_f.workspace_id = f.workspace_id
+            ");
+
+            if let Some(target_cat) = target_category {
+                query.push_str(&format!(" AND target_f.category = '{}' ", target_cat));
+            }
+
+            if let Some(target_kw) = target_keyword {
+                if !target_kw.trim().is_empty() {
+                    let sanitized_target = target_kw.replace("\"", "\"\"").replace(['*', '^', '(', ')'], "");
+                    query.push_str(&format!(" AND target_f.id IN (
+                        SELECT file_id FROM files_fts 
+                        WHERE files_fts MATCH '\"{}\"*'
+                    ) ", sanitized_target));
+                }
+            }
+
             query.push_str(") ");
         }
 
@@ -324,7 +377,7 @@ impl<'a> FileRepository<'a> {
             });
         }
 
-        clusters.sort_by(|a, b| b.total_wasted_size.cmp(&a.total_wasted_size));
+        clusters.sort_by_key(|b| std::cmp::Reverse(b.total_wasted_size));
 
         Ok(clusters)
     }
@@ -444,5 +497,14 @@ impl<'a> FileRepository<'a> {
         }
         
         Ok(entities)
+    }
+
+    /// Update file size, modified_at, and hash metadata in SQLite files table
+    pub fn update_metadata(&self, id: &str, size: u64, modified_at: i64, hash: &str) -> Result<()> {
+        self.conn.execute(
+            "UPDATE files SET size = ?1, modified_at = ?2, hash = ?3 WHERE id = ?4",
+            params![size as i64, modified_at, hash, id],
+        ).map_err(|e| AppError::Database(format!("Failed to update file metadata: {}", e)))?;
+        Ok(())
     }
 }

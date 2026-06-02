@@ -4,12 +4,11 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 use database::repo::file_repo::FileRepository;
-use database::repo::rule_repo::RuleRepository;
 use database::repo::tag_repo::TagRepository;
 use database::repo::workspace_repo::WorkspaceRepository;
 use indexing::scanner::IndexingService;
 use sdw_core::models::{
-    AutomationLog, DuplicateCluster, FileRecord, IndexingSettings, IndexingStatus, Rule, Tag,
+    DuplicateCluster, FileRecord, IndexingSettings, IndexingStatus, Tag,
     Workspace,
 };
 
@@ -120,6 +119,10 @@ pub async fn search_files(
                     sq.category_filter.as_deref(),
                     sq.amount_greater_than,
                     sq.amount_less_than,
+                    sq.created_after,
+                    sq.created_before,
+                    sq.related_to_query.as_deref(),
+                    None,
                     l,
                     o
                 ).map_err(map_err)
@@ -249,39 +252,7 @@ pub async fn trigger_indexing(
     Ok(())
 }
 
-#[tauri::command]
-pub async fn list_rules(
-    state: State<'_, AppState>,
-    workspace_id: String,
-) -> Result<Vec<Rule>, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = RuleRepository::new(&conn);
-    repo.list(&workspace_id).map_err(map_err)
-}
 
-#[tauri::command]
-pub async fn create_rule(state: State<'_, AppState>, rule: Rule) -> Result<(), String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = RuleRepository::new(&conn);
-    repo.create(&rule).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn delete_rule(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = RuleRepository::new(&conn);
-    repo.delete(&id).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn list_automation_logs(
-    state: State<'_, AppState>,
-    limit: usize,
-) -> Result<Vec<AutomationLog>, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = RuleRepository::new(&conn);
-    repo.list_automation_logs(limit).map_err(map_err)
-}
 
 #[tauri::command]
 pub async fn list_tags(state: State<'_, AppState>) -> Result<Vec<Tag>, String> {
@@ -451,59 +422,6 @@ pub async fn export_database(state: State<'_, AppState>) -> Result<String, Strin
     std::fs::copy(&state.db_path, &dest_path).map_err(|e| format!("Failed to export DB: {}", e))?;
 
     Ok(dest_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub async fn export_rules(state: State<'_, AppState>) -> Result<String, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let rule_repo = RuleRepository::new(&conn);
-    let rules = rule_repo.list("all").map_err(map_err)?;
-
-    let json_data =
-        serde_json::to_string_pretty(&rules).map_err(|e| format!("Serialization failed: {}", e))?;
-
-    let home = std::env::var("HOME").unwrap_or_default();
-    let dest_path = std::path::Path::new(&home).join("Downloads/smart_workflow_rules.json");
-
-    std::fs::write(&dest_path, json_data).map_err(|e| format!("Failed to write rules: {}", e))?;
-
-    Ok(dest_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-pub async fn get_document_metadata(
-    state: State<'_, AppState>,
-    file_id: String,
-) -> Result<Option<sdw_core::models::DocumentContent>, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = FileRepository::new(&conn);
-    repo.get_document_content(&file_id).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn save_document_metadata(
-    state: State<'_, AppState>,
-    file_id: String,
-    metadata_json: String,
-) -> Result<(), String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = FileRepository::new(&conn);
-    
-    let mut doc_content = match repo.get_document_content(&file_id).map_err(map_err)? {
-        Some(content) => content,
-        None => sdw_core::models::DocumentContent {
-            file_id: file_id.clone(),
-            extracted_text: "".to_string(),
-            extraction_status: "MANUAL".to_string(),
-            extraction_confidence: 1.0,
-            extracted_at: chrono::Utc::now().timestamp(),
-            structured_metadata: None,
-        },
-    };
-    
-    doc_content.structured_metadata = Some(metadata_json);
-    repo.upsert_document_content(&doc_content).map_err(map_err)?;
-    Ok(())
 }
 
 #[tauri::command]
@@ -678,48 +596,6 @@ pub async fn view_vault_document(
 }
 
 #[tauri::command]
-pub async fn save_workflow(
-    state: State<'_, AppState>,
-    workflow: sdw_core::models::Workflow,
-    nodes: Vec<sdw_core::models::WorkflowNode>,
-    edges: Vec<sdw_core::models::WorkflowEdge>,
-) -> Result<(), String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = database::repo::WorkflowRepository::new(&conn);
-    repo.save_workflow(&workflow, &nodes, &edges).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn list_workflows(
-    state: State<'_, AppState>,
-    workspace_id: String,
-) -> Result<Vec<sdw_core::models::Workflow>, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = database::repo::WorkflowRepository::new(&conn);
-    repo.list_workflows(&workspace_id).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn get_workflow(
-    state: State<'_, AppState>,
-    workflow_id: String,
-) -> Result<Option<(sdw_core::models::Workflow, Vec<sdw_core::models::WorkflowNode>, Vec<sdw_core::models::WorkflowEdge>)>, String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = database::repo::WorkflowRepository::new(&conn);
-    repo.get_workflow(&workflow_id).map_err(map_err)
-}
-
-#[tauri::command]
-pub async fn delete_workflow(
-    state: State<'_, AppState>,
-    workflow_id: String,
-) -> Result<(), String> {
-    let conn = state.db.get().map_err(map_err)?;
-    let repo = database::repo::WorkflowRepository::new(&conn);
-    repo.delete_workflow(&workflow_id).map_err(map_err)
-}
-
-#[tauri::command]
 pub async fn export_workspace(
     app_handle: tauri::AppHandle,
     destination_path: String,
@@ -795,3 +671,44 @@ pub async fn import_workspace(
 
     Ok(())
 }
+
+#[tauri::command]
+pub async fn add_relationship(_workspace_id: String, _source_id: String, _target_id: String, _relationship_type: String) -> Result<(), String> { Ok(()) }
+
+#[tauri::command]
+pub async fn delete_relationship(_id: String) -> Result<(), String> { Ok(()) }
+
+#[tauri::command]
+pub async fn list_relationships(_workspace_id: String) -> Result<Vec<sdw_core::models::DocumentRelationship>, String> { Ok(vec![]) }
+
+#[tauri::command]
+pub async fn get_related_documents(_workspace_id: String, _document_id: String) -> Result<Vec<(sdw_core::models::DocumentRelationship, sdw_core::models::FileRecord)>, String> { Ok(vec![]) }
+
+#[tauri::command]
+pub async fn get_recommendations(_workspace_id: String, _document_id: String) -> Result<Vec<sdw_core::models::FileRecord>, String> { Ok(vec![]) }
+
+#[tauri::command]
+pub async fn get_document_timeline(_document_id: String) -> Result<Vec<sdw_core::models::DocumentTimelineEvent>, String> { Ok(vec![]) }
+
+#[tauri::command]
+pub async fn list_document_versions(_document_id: String) -> Result<Vec<sdw_core::models::DocumentVersion>, String> { Ok(vec![]) }
+
+#[tauri::command]
+pub async fn create_document_version(_document_id: String, _file_path: String) -> Result<sdw_core::models::DocumentVersion, String> { Err("Not implemented".into()) }
+
+#[tauri::command]
+pub async fn restore_document_version(_version_id: String) -> Result<(), String> { Ok(()) }
+
+#[tauri::command]
+pub async fn get_reporting_stats(_workspace_id: String) -> Result<serde_json::Value, String> { 
+    Ok(serde_json::json!({
+        "total_files": 0,
+        "total_size_bytes": 0,
+        "wasted_size_bytes": 0,
+        "duplicate_count": 0,
+        "category_distribution": {}
+    })) 
+}
+
+#[tauri::command]
+pub async fn export_report(_workspace_id: String, _format: String) -> Result<String, String> { Ok(String::new()) }

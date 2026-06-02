@@ -179,3 +179,47 @@ pub struct AutomationLog {
     pub success: bool,
     pub error_msg: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentRelationship {
+    pub id: String,
+    pub source_file_id: String,
+    pub target_file_id: String,
+    pub relationship_type: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SmartCollection {
+    pub id: String,
+    pub workspace_id: String,
+    pub name: String,
+    pub query: String,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentTimelineEvent {
+    pub id: String,
+    pub file_id: String,
+    pub event_type: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentVersion {
+    pub id: String,
+    pub file_id: String,
+    pub version_number: i32,
+    pub filename: String,
+    pub comment: Option<String>,
+    pub backup_path: String,
+    pub hash: String,
+    pub created_at: i64,
+}
+
+

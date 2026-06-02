@@ -30,6 +30,7 @@ impl PluginManager {
         &self.plugin_dir
     }
 
+    #[allow(clippy::collapsible_if)]
     pub fn list_plugins(&self) -> Result<Vec<String>> {
         let mut plugins = Vec::new();
         if self.plugin_dir.exists() {

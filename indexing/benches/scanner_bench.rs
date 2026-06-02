@@ -1,6 +1,5 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use indexing::scanner::hash_file;
-use std::fs::File;
 use std::io::Write;
 use tempfile::NamedTempFile;
 

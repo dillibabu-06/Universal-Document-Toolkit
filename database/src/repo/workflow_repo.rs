@@ -67,6 +67,7 @@ impl<'a> WorkflowRepository<'a> {
         Ok(res)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn get_workflow(&self, workflow_id: &str) -> Result<Option<(Workflow, Vec<WorkflowNode>, Vec<WorkflowEdge>)>> {
         let mut stmt = self.conn.prepare("SELECT id, workspace_id, name, enabled, created_at, updated_at FROM workflows WHERE id = ?1")?;
         let workflow_opt = stmt.query_row(params![workflow_id], |row| {

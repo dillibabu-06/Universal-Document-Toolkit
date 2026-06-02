@@ -50,32 +50,6 @@ CREATE TABLE IF NOT EXISTS file_tags (
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 );
 
--- 5. Automation Rules Table
-CREATE TABLE IF NOT EXISTS rules (
-    id TEXT PRIMARY KEY,
-    workspace_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    is_active INTEGER DEFAULT 1,
-    trigger_event TEXT NOT NULL, -- "on_create", "on_modify", "on_schedule"
-    conditions TEXT NOT NULL, -- JSON rule filters
-    actions TEXT NOT NULL, -- JSON list of actions
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
-);
-
--- 6. Automation Logs Table
-CREATE TABLE IF NOT EXISTS automation_logs (
-    id TEXT PRIMARY KEY,
-    rule_id TEXT NOT NULL,
-    rule_name TEXT NOT NULL,
-    file_path TEXT NOT NULL,
-    action_taken TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    success INTEGER NOT NULL,
-    error_msg TEXT,
-    FOREIGN KEY (rule_id) REFERENCES rules(id) ON DELETE CASCADE
-);
 
 -- 7. FTS5 Virtual Table for Instant Search
 CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
