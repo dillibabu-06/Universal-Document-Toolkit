@@ -1,93 +1,248 @@
-# Universal Toolkit OS
+# Universal Toolkit
 
-**Universal Toolkit OS** is a premium, local-first Document Operating System designed to replace scattered file managers with a highly optimized, beautifully crafted digital workspace. Built for maximum privacy, it combines a blisteringly fast Rust core with an intuitive glassmorphic React interface to manage, secure, and visualize your documents.
+A local-first desktop application for document organization, search, processing, and secure storage.
 
+Built with Rust, Tauri, React, TypeScript, SQLite, and Python, Universal Toolkit combines document indexing, full-text search, PDF utilities, Office document tools, encrypted storage, and relationship visualization into a single desktop application.
+
+## Overview
+
+Universal Toolkit helps users manage large collections of documents without relying on cloud services.
+
+The application indexes files stored on local drives, extracts searchable content, stores metadata in SQLite, and provides tools for working with PDFs, Office documents, images, and encrypted archives.
+
+All processing is performed locally on the user's machine.
+
+## Features
+
+### Document Explorer
+
+Browse and manage documents through a three-pane interface:
+
+- Folder tree navigation
+- Grid and list views
+- File previews
+- Metadata inspection
+- Relationship visualization
+- Version history access
+
+**Supported file types include:**
+PDF, DOCX, XLSX, CSV, PNG, JPG, JPEG, WEBP, TIFF, BMP
+
+### Full-Text Search
+
+Universal Toolkit uses SQLite FTS5 to provide fast local search.
+
+**Features:**
+- Filename search
+- Content search
+- Metadata search
+- Entity search
+- Relationship-aware search
+- Saved filters
+
+**Example queries:**
+- `amazon invoices`
+- `contracts signed in 2025`
+- `receipts related to invoice A102`
+- `resume rust developer`
+
+### PDF Studio
+
+Built-in PDF utilities:
+- Merge PDFs
+- Split PDFs
+- Rotate pages
+- Add watermarks
+- Encrypt PDFs
+- Compress documents
+- Convert images to PDF
+
+### Office Studio
+
+Tools for working with Office documents:
+- DOCX template processing
+- Spreadsheet preview
+- CSV import/export
+- XLSX inspection
+- Document generation
+
+### Security Vault
+
+Encrypted storage for sensitive files.
+
+**Security implementation:**
+- AES-256-GCM encryption
+- Argon2 password hashing
+- Per-file encryption
+- Secure temporary previews
+
+**Features:**
+- Create vaults
+- Lock/unlock vaults
+- Store protected documents
+- Move files into secure storage
+- View vault contents
+
+### Knowledge Graph
+
+Visualize relationships between documents.
+
+**Features:**
+- Interactive graph canvas
+- Manual relationship creation
+- Relationship filtering
+- Connected document discovery
+- Category-based organization
+
+**Supported relationship types:**
+- Invoice → Receipt
+- Contract → Amendment
+- Statement → Transaction
+- Resume → Supporting Document
+
+### Timeline & Versioning
+
+Track document history over time.
+
+**Timeline events:**
+- Created
+- Modified
+- Renamed
+- Moved
+- Archived
+- Restored
+
+**Versioning features:**
+- Create snapshots
+- Restore previous versions
+- Compare revisions
+- Store version notes
+
+### Reporting
+
+Generate reports about your document collection.
+
+**Available reports:**
+- Storage usage
+- File type distribution
+- Duplicate files
+- Vault usage
+- Search activity
+- Workspace growth
+
+**Export formats:**
+PDF, CSV, XLSX
+
+### Backup & Recovery
+
+Built-in backup system.
+
+**Features:**
+- Manual backups
+- Scheduled backups
+- Backup validation
+- Restore operations
+
+**Backed up data includes:**
+- SQLite database
+- Settings
+- Metadata
+- Version history
+- Vault metadata
+
+## Architecture
+
+- **Frontend:** React, TypeScript, Tailwind CSS, Zustand, React Flow
+- **Desktop Layer:** Rust, Tauri
+- **Storage:** SQLite, FTS5
+- **Processing:** Rust Services, Python Sidecar
+- **Security:** AES-256-GCM, Argon2
+
+## Project Structure
+
+```text
+Universal_toolkit/
+│
+├── src/                 # React frontend
+├── src-tauri/           # Tauri desktop application
+├── database/            # SQLite repositories & migrations
+├── indexing/            # File scanning and indexing
+├── intelligence/        # Entity extraction & search logic
+├── automation/          # Background workers
+├── plugins/             # WASM plugin runtime
+├── backend/             # Python sidecar services
+├── core/                # Shared Rust models
+└── docs/                # Documentation
+```
+
+## Building
+
+### Requirements
+- Node.js 20+
+- Rust stable
+- Cargo
+- Python 3.11+
+- Tauri CLI
+
+### Install
+
+```bash
+git clone https://github.com/dillibabu-06/Universal-Document-Toolkit.git
+cd Universal-Document-Toolkit
+npm install
+```
+
+### Development
+```bash
+npm run tauri dev
+```
+
+### Production Build
+```bash
+npm run build
+npm run tauri build
+```
+
+## Screenshots
+
+### Dashboard
 <p align="center">
-  <img src="docs/assets/dashboard.png" alt="Universal Toolkit OS Dashboard" width="800">
+  <img src="docs/assets/dashboard.png" alt="Dashboard" width="800">
 </p>
 
----
+### Explorer
+*(Screenshot pending)*
 
-## 🌟 Key Features
+### Knowledge Graph
+*(Screenshot pending)*
 
-### 📁 Unified Explorer & Smart Organization
-- **Blazing Fast Indexing:** Powered by Rust and SQLite FTS5, navigate and search hundreds of thousands of files with zero latency.
-- **Visual File Management:** Beautifully categorized documents with instant previews for PDFs, Office files, and media.
-- **Document Timeline:** View the complete chronological history of your documents, including creation, modification, and vault movements.
-
-### 🔍 Search Intelligence
-- **Offline Semantic Search:** Instantly locate files across your entire machine using high-performance Full-Text Search.
-- **Knowledge Graph:** Discover hidden connections between files through relationship mapping and visual network analysis.
-
-### 🛡️ Enterprise-Grade Security Vault
-
+### Security Vault
 <p align="center">
-  <img src="docs/assets/vault.png" alt="Security Vault" width="600">
+  <img src="docs/assets/vault.png" alt="Security Vault" width="800">
 </p>
 
-- **Zero-Knowledge Encryption:** Secure sensitive documents (e.g., tax forms, personal IDs, financial statements) using AES-256-GCM encryption.
-- **In-Memory Decryption:** Files remain fully encrypted on disk. Viewing securely decrypts content straight to memory for maximum privacy.
-- **Vault Export & Backup:** Export your entire vault as a secure ZIP archive for cold storage.
+### PDF Studio
+*(Screenshot pending)*
 
-### 📊 Reporting & Analytics Center
-- **Workspace Insights:** Visualize your storage distribution, document categories, and disk health in a sleek analytics dashboard.
-- **One-Click Exports:** Export workspace metrics and file listings directly to CSV, XLSX, and PDF formats for compliance and auditing.
+## Current Status
 
-### 🛠️ Built-in Productivity Studios
-- **PDF Studio:** High-performance, offline PDF viewer directly integrated into the dashboard.
-- **Office Studio:** Preview Word, Excel, and CSV files natively without requiring external heavy applications.
-- **Media Studio:** Gallery-style image visualization and management.
+- **Version:** 1.0.0
+- **Status:** Stable Release
+- **Supported Platforms:** Windows 10 / 11, macOS (Intel & Apple Silicon), Linux (AppImage / DEB)
 
-### 💾 Complete Data Portability
-- **Backup & Restore:** Generate encrypted `.sdwbak` archives containing your entire settings, database, and configurations. Never lose a workspace environment.
-- **Local-First Design:** No cloud requirements, no subscriptions, and zero telemetry. Your data never leaves your device.
+## Privacy
 
----
+Universal Toolkit is designed as a local-first application.
+- No cloud account required
+- No document uploads
+- No external AI services required
+- Data remains on your machine
 
-## 🏛️ Architecture Overview
+## License
 
-The application is built on a high-performance stack prioritizing speed, security, and aesthetics:
+MIT License. See LICENSE for details.
 
-1. **`src-tauri/` (Desktop Window & Commands)**: A lightweight Rust backend powered by Tauri for executing core system commands, cryptographic operations, and thread orchestration.
-2. **`database/` (SQLite Unified Storage)**: An optimized SQLite layer handling FTS5 indexes, timelines, versioning, and document relationship graphs.
-3. **`src/` (React UI)**: A highly polished React 18 interface utilizing TailwindCSS and `@tanstack/react-virtual` to smoothly render massive file directories at 60FPS.
+## Acknowledgements
 
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-- [Node.js](https://nodejs.org) (v18+)
-- [Rust](https://rustup.rs/) (1.70+)
-
-### Installation & Build
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/dillibabu-06/Universal-Document-Toolkit.git
-   cd Universal-Document-Toolkit
-   ```
-
-2. **Install frontend dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Run the local development server:**
-   ```bash
-   npm run tauri dev
-   ```
-
-4. **Build for Production (Installers):**
-   ```bash
-   npm run tauri build
-   ```
-   *(This will generate the `.dmg`, `.app`, `.msi`, or `.AppImage` files in the `target/release/bundle/` directory depending on your OS).*
-
----
-
-## 🤝 Contributing
-Universal Toolkit OS is a polished release. Pull requests, bug reports, and issues are strictly monitored. Feel free to open a discussion or report issues in the GitHub tracker!
-
-## 📜 License
-MIT License
+Open-source technologies used:
+Rust, Tauri, React, TypeScript, SQLite, FastAPI, Tailwind CSS, React Flow, Wasmtime
